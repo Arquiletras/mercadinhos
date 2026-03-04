@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mercadinho — Controle de Estoque</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Condensed:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#f5f0e8; --bg2:#ede8df; --surface:#fff;
+  --border:#d8d0c4; --ink:#1a1510; --ink2:#5a5248; --ink3:#9a9088;
+  --accent:#c8410a; --accent2:#e8820a;
+  --green:#2a7a3a; --green-bg:#eaf5ec;
+  --red:#c8200a; --red-bg:#fdf0ee;
+  --shadow:0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.14);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;
+  background-image:radial-gradient(circle at 20% 50%,rgba(200,65,10,.04) 0%,transparent 50%),
+  radial-gradient(circle at 80% 20%,rgba(232,130,10,.04) 0%,transparent 50%);}
+
+/* NAV */
+nav{background:var(--ink);padding:0 12px;display:flex;align-items:stretch;
+  flex-wrap:wrap;position:sticky;top:0;z-index:200;box-shadow:var(--shadow-lg);}
+.nav-logo{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;
+  color:#fff;letter-spacing:1px;padding:12px 10px 12px 0;
+  border-right:1px solid rgba(255,255,255,.15);margin-right:6px;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.nav-logo .dot{color:var(--accent2);}
+.nav-btn{padding:0 14px;border:none;background:transparent;color:rgba(255,255,255,.45);
+  font-family:'Barlow',sans-serif;font-size:12px;font-weight:700;cursor:pointer;
+  text-transform:uppercase;letter-spacing:1.2px;transition:all .2s;
+  border-bottom:3px solid transparent;white-space:nowrap;}
+.nav-btn:hover{color:rgba(255,255,255,.9);background:rgba(255,255,255,.05);}
+.nav-btn.active{color:#fff;border-bottom-color:var(--accent2);background:rgba(232,130,10,.12);}
+.nav-btn-relatorio{border-left:1px solid rgba(255,255,255,.1);margin-left:4px;padding-left:16px;color:rgba(255,255,255,.35);font-size:11px;}
+
+/* PAGES */
+.page{display:none;padding:32px 28px;max-width:1100px;margin:0 auto;}
+.page.active{display:block;animation:fadeIn .22s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.page-title{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:800;line-height:1;}
+.page-sub{font-size:13px;color:var(--ink3);margin-top:4px;}
+.page-header{margin-bottom:24px;}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:24px;box-shadow:var(--shadow);margin-bottom:24px;}
+.card-title{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;
+  text-transform:uppercase;letter-spacing:2px;color:var(--ink2);margin-bottom:18px;
+  padding-bottom:12px;border-bottom:2px solid var(--bg2);display:flex;align-items:center;gap:8px;}
+
+/* FORM */
+.form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:12px;align-items:end;}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--ink3);}
+.field input{background:var(--bg);border:1.5px solid var(--border);border-radius:8px;
+  padding:10px 13px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ink);
+  outline:none;transition:all .2s;width:100%;}
+.field input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(200,65,10,.08);}
+.field input[readonly]{background:var(--bg2);color:var(--ink2);cursor:default;}
+
+/* AUTOCOMPLETE */
+.ac-wrap{position:relative;width:100%;}
+.ac-wrap input{width:100%;}
+.ac-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#fff;border:1.5px solid var(--accent);border-radius:10px;
+  box-shadow:0 8px 28px rgba(0,0,0,0.14);z-index:300;
+  max-height:240px;overflow-y:auto;display:none;}
+.ac-dropdown.open{display:block;}
+.ac-item{padding:10px 14px;font-size:14px;cursor:pointer;
+  font-family:'Barlow',sans-serif;border-bottom:1px solid var(--border);
+  transition:background .1s;}
+.ac-item:last-child{border-bottom:none;}
+.ac-item:hover,.ac-item.selected{background:var(--bg2);}
+.ac-item mark{background:none;color:var(--accent);font-weight:700;}
+.ac-count{padding:7px 14px;font-size:11px;color:var(--ink3);
+  background:var(--bg2);border-top:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace;border-radius:0 0 10px 10px;}
+
+/* BUTTONS */
+.btn{padding:10px 20px;border:none;border-radius:8px;font-family:'Barlow',sans-serif;
+  font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;
+  cursor:pointer;transition:all .18s;white-space:nowrap;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#a83408;transform:translateY(-1px);box-shadow:0 4px 12px rgba(200,65,10,.3);}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#1e5f2c;transform:translateY(-1px);box-shadow:0 4px 12px rgba(42,122,58,.3);}
+.btn-orange{background:var(--accent2);color:#fff;}
+.btn-orange:hover{background:#c46e08;transform:translateY(-1px);}
+.btn-cancel{background:var(--bg2);color:var(--ink2);}
+.btn-cancel:hover{background:var(--border);}
+.btn-sm{padding:6px 12px;font-size:10px;}
+.btn-lg{padding:14px 32px;font-size:15px;}
+
+/* TABLE */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
+.table-head{padding:13px 18px;background:var(--ink);display:flex;align-items:center;justify-content:space-between;}
+.table-head-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
+  text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);}
+.table-count{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent2);}
+table{width:100%;border-collapse:collapse;}
+thead th{padding:10px 15px;text-align:left;font-size:10px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1.5px;color:var(--ink3);
+  background:var(--bg2);border-bottom:1px solid var(--border);}
+tbody tr{border-bottom:1px solid var(--border);transition:background .12s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--bg);}
+tbody td{padding:12px 15px;font-size:14px;}
+.mono{font-family:'JetBrains Mono',monospace;}
+.total-row{background:var(--ink)!important;}
+.total-row td{color:#fff!important;font-weight:700;font-family:'Barlow Condensed',sans-serif;font-size:15px;}
+.total-row .mono{font-family:'JetBrains Mono',monospace;color:var(--accent2)!important;}
+.qty-badge{display:inline-block;padding:3px 9px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:12px;}
+.qty-ok{background:var(--green-bg);color:var(--green);}
+.qty-zero{background:var(--red-bg);color:var(--red);}
+
+/* SELETOR DE PRODUTO — CAIXA */
+.produto-selector{background:var(--surface);border:2px solid var(--accent);border-radius:14px;
+  padding:20px;margin-bottom:18px;box-shadow:0 4px 18px rgba(200,65,10,.10);}
+.produto-selector-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
+  text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin-bottom:16px;
+  display:flex;align-items:center;gap:6px;}
+
+/* Linha 1: busca */
+.ps-busca-wrap{position:relative;margin-bottom:12px;}
+.ps-busca-wrap input{width:100%;background:var(--bg);border:2px solid var(--border);border-radius:10px;
+  padding:13px 16px;font-family:'Barlow',sans-serif;font-size:16px;font-weight:600;
+  color:var(--ink);outline:none;transition:all .2s;}
+.ps-busca-wrap input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(200,65,10,.08);}
+.ps-dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:#fff;border:2px solid var(--accent);border-radius:10px;
+  box-shadow:0 8px 28px rgba(0,0,0,0.15);z-index:400;
+  max-height:260px;overflow-y:auto;display:none;}
+.ps-dropdown.open{display:block;}
+.ps-item{padding:12px 16px;font-size:14px;cursor:pointer;border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;transition:background .1s;gap:10px;}
+.ps-item:last-child{border-bottom:none;}
+.ps-item:hover,.ps-item.sel{background:var(--bg2);}
+.ps-item-nome{font-weight:600;color:var(--ink);flex:1;}
+.ps-item-nome mark{background:none;color:var(--accent);font-weight:800;}
+.ps-item-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;white-space:nowrap;}
+.ps-item-preco{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--green);font-weight:700;}
+.ps-item-estq{font-size:10px;color:var(--ink3);}
+.ps-item-zero{opacity:.38;cursor:not-allowed;}
+
+/* Linha 2: produto selecionado + qtd + subtotal + botão */
+.ps-confirm{display:none;background:var(--bg2);border:1.5px solid var(--border);
+  border-radius:10px;padding:14px 16px;gap:12px;align-items:center;flex-wrap:wrap;}
+.ps-confirm.show{display:flex;}
+.ps-confirm-nome{font-size:15px;font-weight:700;flex:1;min-width:120px;color:var(--ink);}
+.ps-confirm-preco{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink2);}
+.ps-qtd-wrap{display:flex;align-items:center;gap:8px;}
+.ps-qtd-wrap label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--ink3);white-space:nowrap;}
+.ps-qtd-wrap input{width:72px;background:#fff;border:2px solid var(--border);border-radius:8px;
+  padding:9px 10px;font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;
+  color:var(--ink);outline:none;text-align:center;transition:border-color .2s;}
+.ps-qtd-wrap input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(42,122,58,.10);}
+.ps-subtotal{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;
+  color:var(--green);min-width:100px;text-align:right;white-space:nowrap;}
+.ps-btn-add{white-space:nowrap;}
+
+/* LISTA CARRINHO */
+.carrinho-lista{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;box-shadow:var(--shadow);margin-bottom:18px;}
+.carrinho-lista-head{padding:12px 18px;background:var(--ink);display:flex;align-items:center;justify-content:space-between;}
+.carrinho-lista-title{font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;
+  text-transform:uppercase;letter-spacing:2px;color:rgba(255,255,255,.7);}
+.carrinho-item-row{display:flex;align-items:center;padding:11px 18px;
+  border-bottom:1px solid var(--border);gap:10px;}
+.carrinho-item-row:last-child{border-bottom:none;}
+.ci-nome{font-size:14px;font-weight:600;flex:1;}
+.ci-qtd{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink2);width:40px;text-align:center;}
+.ci-val{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--green);font-weight:700;width:90px;text-align:right;}
+.ci-del{background:none;border:none;cursor:pointer;font-size:16px;color:var(--red);
+  padding:2px 6px;border-radius:6px;transition:background .15s;margin-left:4px;}
+.ci-del:hover{background:var(--red-bg);}
+
+
+.cliente-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:18px 22px;box-shadow:var(--shadow);margin-bottom:18px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.cliente-bar label{font-size:11px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--ink3);white-space:nowrap;}
+.cliente-bar input{flex:1;min-width:200px;background:var(--bg);border:1.5px solid var(--border);
+  border-radius:8px;padding:10px 14px;font-family:'Barlow',sans-serif;
+  font-size:15px;font-weight:600;color:var(--ink);outline:none;transition:all .2s;}
+.cliente-bar input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(200,65,10,.08);}
+
+.carrinho-bar{background:var(--green);border-radius:12px;padding:14px 20px;margin-bottom:18px;
+  display:flex;align-items:center;justify-content:space-between;color:#fff;
+  box-shadow:0 4px 14px rgba(42,122,58,.25);}
+.carrinho-info{font-size:14px;font-weight:600;}
+.carrinho-total{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;}
+
+.fim-compra-bar{text-align:center;padding:20px 0 4px;}
+
+/* MODAL EDITAR PREÇOS */
+#edit-modal{display:none;position:fixed;inset:0;background:rgba(26,21,16,.65);
+  z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+#edit-modal.open{display:flex;}
+.edit-box{background:var(--surface);border-radius:16px;padding:28px;
+  width:380px;max-width:95vw;box-shadow:var(--shadow-lg);animation:modalIn .22s ease;}
+.edit-title{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;
+  margin-bottom:4px;line-height:1.2;}
+.edit-sub{font-size:12px;color:var(--ink3);margin-bottom:22px;font-family:'JetBrains Mono',monospace;}
+.edit-fields{display:flex;flex-direction:column;gap:14px;margin-bottom:20px;}
+.edit-field label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--ink3);margin-bottom:6px;}
+.edit-field input{width:100%;background:var(--bg);border:2px solid var(--border);border-radius:8px;
+  padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:600;
+  color:var(--ink);outline:none;transition:border-color .2s;}
+.edit-field input:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(200,65,10,.08);}
+.edit-btns{display:flex;gap:10px;}
+.edit-btns .btn{flex:1;padding:12px;}
+
+
+#venda-modal{display:none;position:fixed;inset:0;background:rgba(26,21,16,.65);
+  z-index:500;align-items:center;justify-content:center;backdrop-filter:blur(3px);}
+#venda-modal.open{display:flex;}
+.modal-box{background:var(--surface);border-radius:16px;padding:28px;
+  width:400px;max-width:95vw;box-shadow:var(--shadow-lg);animation:modalIn .22s ease;}
+@keyframes modalIn{from{transform:scale(.93);opacity:0}to{transform:scale(1);opacity:1}}
+.modal-produto{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px;}
+.modal-estoque-txt{font-size:12px;color:var(--ink3);margin-bottom:20px;font-family:'JetBrains Mono',monospace;}
+.modal-estoque-txt strong{color:var(--green);}
+.modal-field{margin-bottom:16px;}
+.modal-field label{display:block;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--ink3);margin-bottom:7px;}
+.modal-field input{width:100%;background:var(--bg);border:2px solid var(--border);border-radius:8px;
+  padding:11px 14px;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:500;
+  color:var(--ink);outline:none;text-align:center;transition:border-color .2s;}
+.modal-field input:focus{border-color:var(--green);background:var(--green-bg);}
+.modal-subtotal{background:var(--green-bg);border:1px solid rgba(42,122,58,.2);border-radius:8px;
+  padding:12px 14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;}
+.modal-subtotal-label{font-size:12px;color:var(--ink2);font-weight:600;}
+.modal-subtotal-val{font-family:'JetBrains Mono',monospace;font-size:20px;color:var(--green);font-weight:500;}
+.modal-btns{display:flex;gap:10px;}
+.modal-btns .btn{flex:1;padding:12px;}
+.prod-nome-btn{background:none;border:none;font-family:'Barlow',sans-serif;font-size:14px;
+  font-weight:600;color:var(--ink);cursor:pointer;text-align:left;transition:color .15s;padding:0;}
+.prod-nome-btn:hover{color:var(--accent);}
+
+/* CUPOM MODAL */
+#cupom-modal{display:none;position:fixed;inset:0;background:rgba(26,21,16,.72);
+  z-index:600;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+#cupom-modal.open{display:flex;}
+.cupom-box{background:#fff;border-radius:4px;width:360px;max-width:95vw;
+  max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);
+  animation:modalIn .22s ease;border-top:6px solid var(--ink);}
+.cupom-inner{padding:24px 22px;font-family:'JetBrains Mono',monospace;}
+.cupom-header{text-align:center;margin-bottom:16px;border-bottom:2px dashed #ccc;padding-bottom:14px;}
+.cupom-header h2{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;letter-spacing:2px;}
+.cupom-header p{font-size:11px;color:#666;margin-top:3px;}
+.cupom-cliente{font-size:12px;margin-bottom:14px;color:#333;padding:8px 0;border-bottom:1px dashed #ddd;}
+.cupom-cliente strong{color:#000;font-size:13px;}
+.cupom-linha{display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-bottom:1px dotted #ddd;}
+.cupom-linha .c-nome{flex:1;}
+.cupom-linha .c-qtd{width:36px;text-align:center;color:#888;}
+.cupom-linha .c-val{width:82px;text-align:right;}
+.cupom-unit{font-size:10px;color:#aaa;padding:0 0 5px 0;}
+.cupom-total{margin-top:14px;padding-top:14px;border-top:2px dashed #333;
+  display:flex;justify-content:space-between;font-size:17px;font-weight:700;}
+.cupom-total .cv{color:var(--green);}
+.cupom-footer{text-align:center;font-size:10px;color:#aaa;margin-top:14px;
+  padding-top:10px;border-top:1px dashed #ccc;}
+.cupom-acoes{padding:14px 16px;border-top:1px solid var(--border);
+  display:flex;gap:8px;background:var(--bg2);flex-wrap:wrap;}
+.cupom-acoes .btn{flex:1;min-width:80px;text-align:center;}
+
+/* ESTATÍSTICAS */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:16px 12px;box-shadow:var(--shadow);text-align:center;}
+.stat-card-val{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:700;color:var(--accent);line-height:1;}
+.stat-card-val.green{color:var(--green);}
+.stat-card-val.orange{color:var(--accent2);}
+.stat-card-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--ink3);margin-top:6px;}
+.stats-rank{display:flex;align-items:center;gap:12px;padding:12px 16px;
+  border-bottom:1px solid var(--border);transition:background .12s;}
+.stats-rank:last-child{border-bottom:none;}
+.stats-rank:hover{background:var(--bg);}
+.stats-rank-pos{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+  color:var(--ink3);width:28px;text-align:center;flex-shrink:0;}
+.stats-rank-pos.top1{color:#f5a623;font-size:18px;}
+.stats-rank-pos.top2{color:#9b9b9b;font-size:16px;}
+.stats-rank-pos.top3{color:#c47a3a;font-size:15px;}
+.stats-rank-nome{flex:1;font-size:14px;font-weight:600;color:var(--ink);}
+.stats-rank-qtd{font-family:'JetBrains Mono',monospace;font-size:13px;
+  color:var(--ink2);width:60px;text-align:right;}
+.stats-rank-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;
+  color:var(--green);width:100px;text-align:right;}
+.stats-bar-wrap{flex:1;height:6px;background:var(--bg2);border-radius:3px;overflow:hidden;margin:0 10px;}
+.stats-bar{height:100%;background:var(--accent);border-radius:3px;transition:width .4s;}
+
+@media(max-width:680px){
+  .stats-grid{grid-template-columns:repeat(3,1fr);gap:8px;}
+  .stat-card{padding:12px 8px;}
+  .stat-card-val{font-size:16px;}
+  .stats-rank-val{display:none;}
+}
+
+
+.rel-day-block{margin-bottom:28px;}
+.rel-day-title{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;
+  text-transform:uppercase;letter-spacing:1px;padding:8px 0 6px;color:var(--ink2);
+  border-bottom:2px solid var(--border);margin-bottom:12px;
+  display:flex;justify-content:space-between;align-items:baseline;}
+.rel-day-sum{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--green);font-weight:700;}
+.rel-venda-card{background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;margin-bottom:12px;box-shadow:var(--shadow);overflow:hidden;}
+.rel-venda-header{padding:12px 18px;background:var(--bg2);
+  display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.rel-venda-nome{font-weight:700;font-size:15px;}
+.rel-venda-hora{font-size:11px;color:var(--ink3);font-family:'JetBrains Mono',monospace;}
+.rel-venda-total{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:700;color:var(--green);}
+.rel-venda-itens{padding:8px 18px;}
+.rel-venda-item{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dotted var(--border);}
+.rel-venda-item:last-child{border:none;}
+.rel-limpar{display:flex;justify-content:flex-end;margin-bottom:16px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;background:var(--ink);color:#fff;
+  padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;
+  box-shadow:var(--shadow-lg);transform:translateY(70px);opacity:0;
+  transition:all .3s;z-index:999;border-left:4px solid var(--accent2);}
+#toast.show{transform:translateY(0);opacity:1;}
+
+/* EMPTY */
+.empty{text-align:center;padding:44px 20px;color:var(--ink3);}
+.empty-icon{font-size:38px;margin-bottom:10px;}
+.empty-text{font-size:13px;}
+
+/* PRINT */
+@media print{
+  body *{visibility:hidden;}
+  .cupom-inner,.cupom-inner *{visibility:visible;}
+  .cupom-inner{position:fixed;top:0;left:0;width:100%;}
+  .cupom-acoes{display:none!important;}
+}
+
+@media(max-width:680px){
+  .page{padding:16px 12px;}
+  .form-row{grid-template-columns:1fr 1fr;}
+  .form-row>*:first-child{grid-column:span 2;}
+  .produto-selector-row{grid-template-columns:1fr 70px;}
+  .produto-selector-row>*:last-child{grid-column:span 2;}
+  .cliente-bar{flex-direction:column;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">🛒 Mercadinho<span class="dot">.</span></div>
+  <button class="nav-btn active"  onclick="showPage('caixa',this)">🏪 Caixa</button>
+  <button class="nav-btn"         onclick="showPage('estoque',this)">📦 Estoque</button>
+  <button class="nav-btn"         onclick="showPage('entrada',this)">📥 Entrada</button>
+  <button class="nav-btn nav-btn-relatorio" onclick="showPage('relatorio',this)">📋 Relatório</button>
+  <button class="nav-btn nav-btn-relatorio" onclick="showPage('stats',this)">📊 Estatísticas</button>
+</nav>
+
+<!-- ═══ ENTRADA ═══ -->
+<div id="page-entrada" class="page">
+  <div class="page-header">
+    <div class="page-title">Entrada de Produto</div>
+    <div class="page-sub">Cadastre novos produtos ou adicione estoque existente</div>
+  </div>
+  <div class="card">
+    <div class="card-title">📥 Novo Produto</div>
+    <div class="form-row">
+      <div class="field">
+        <label>Nome do Produto</label>
+        <div class="ac-wrap">
+          <input type="text" id="ent-nome" placeholder="Digite para buscar ou escolher..." autocomplete="off" oninput="acFiltrar()" onkeydown="acTecla(event)" onfocus="acFiltrar()">
+          <div class="ac-dropdown" id="ac-dropdown"></div>
+        </div>
+      </div>
+      <div class="field"><label>Quantidade</label><input type="number" id="ent-qtd" placeholder="0" min="1"></div>
+      <div class="field"><label>Custo (R$)</label><input type="text" id="ent-custo" placeholder="0,00" inputmode="numeric" oninput="mascaraMoeda(this)"></div>
+      <div class="field"><label>Preço Venda (R$)</label><input type="text" id="ent-venda" placeholder="0,00" inputmode="numeric" oninput="mascaraMoeda(this)"></div>
+      <div class="field"><label>Data Entrada</label><input type="text" id="ent-data" readonly></div>
+    </div>
+    <div style="margin-top:16px"><button class="btn btn-primary" onclick="cadastrarProduto()">+ Cadastrar Produto</button></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-head">
+      <span class="table-head-title">Produtos Cadastrados</span>
+      <span class="table-count" id="ent-count">0 itens</span>
+    </div>
+    <table>
+      <thead><tr><th>Produto</th><th>Quantidade</th><th>Custo</th><th>Preço Venda</th><th>Data Entrada</th><th></th></tr></thead>
+      <tbody id="tabela-entrada"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ ESTOQUE ═══ -->
+<div id="page-estoque" class="page">
+  <div class="page-header">
+    <div class="page-title">Estoque</div>
+    <div class="page-sub">Todos os produtos em ordem alfabética</div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-head">
+      <span class="table-head-title">Todos os Produtos</span>
+      <span class="table-count" id="est-count">0 itens</span>
+    </div>
+    <table>
+      <thead><tr><th>Produto</th><th>Quantidade</th><th>Custo (R$)</th><th>Preço Venda (R$)</th><th>Data Entrada</th><th></th></tr></thead>
+      <tbody id="tabela-estoque"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══ CAIXA ═══ -->
+<div id="page-caixa" class="page active">
+  <div class="page-header">
+    <div class="page-title">🏪 Caixa</div>
+    <div class="page-sub">Selecione os produtos e finalize a compra</div>
+  </div>
+
+  <div class="cliente-bar">
+    <label>👤 Cliente</label>
+    <input type="text" id="caixa-cliente" placeholder="Nome do cliente..." autocomplete="off">
+    <button class="btn btn-cancel btn-sm" onclick="limparCarrinho()">🗑 Limpar</button>
+  </div>
+
+  <!-- SELETOR DE PRODUTO -->
+  <div class="produto-selector">
+    <div class="produto-selector-title">🛒 Adicionar Produto</div>
+
+    <!-- Etapa 1: buscar produto -->
+    <div class="ps-busca-wrap">
+      <input type="text" id="ps-busca" placeholder="🔍  Digite o nome do produto..."
+        autocomplete="off" oninput="psBuscar()" onkeydown="psTecla(event)" onfocus="psBuscar()">
+      <div class="ps-dropdown" id="ps-dropdown"></div>
+    </div>
+
+    <!-- Etapa 2: confirmar quantidade (aparece após escolher produto) -->
+    <div class="ps-confirm" id="ps-confirm">
+      <div>
+        <div class="ps-confirm-nome" id="ps-confirm-nome">—</div>
+        <div class="ps-confirm-preco" id="ps-confirm-preco"></div>
+      </div>
+      <div class="ps-qtd-wrap">
+        <label>Qtd</label>
+        <input type="number" id="ps-qtd" min="1" value="1"
+          oninput="psCalcSubtotal()" onkeydown="if(event.key==='Enter') psAdicionar()">
+      </div>
+      <div class="ps-subtotal" id="ps-subtotal">R$ 0,00</div>
+      <button class="btn btn-green ps-btn-add" onclick="psAdicionar()">✔ Adicionar</button>
+    </div>
+  </div>
+
+  <!-- TOTAL CARRINHO -->
+  <div class="carrinho-bar">
+    <div class="carrinho-info" id="carrinho-info">Nenhum item adicionado</div>
+    <div class="carrinho-total" id="carrinho-total">R$ 0,00</div>
+  </div>
+
+  <!-- LISTA DO CARRINHO -->
+  <div class="carrinho-lista" id="carrinho-lista" style="display:none">
+    <div class="carrinho-lista-head">
+      <span class="carrinho-lista-title">🧺 Itens da Compra</span>
+    </div>
+    <div id="carrinho-itens"></div>
+  </div>
+
+  <div class="fim-compra-bar">
+    <button class="btn btn-orange btn-lg" onclick="finalizarCompra()">
+      🧾 Fim da Compra — Gerar Cupom
+    </button>
+  </div>
+</div>
+
+<!-- ═══ RELATÓRIO ═══ -->
+<div id="page-relatorio" class="page">
+  <div class="page-header">
+    <div class="page-title">📋 Relatório Diário de Vendas</div>
+    <div class="page-sub">Todas as compras finalizadas, organizadas por dia</div>
+  </div>
+  <div class="rel-limpar">
+    <button class="btn btn-cancel btn-sm" onclick="limparRelatorio()">🗑 Limpar Relatório</button>
+  </div>
+  <div id="relatorio-conteudo"></div>
+</div>
+
+<!-- ═══ MODAL EDITAR PREÇOS ═══ -->
+<div id="edit-modal">
+  <div class="edit-box">
+    <div class="edit-title" id="edit-nome">—</div>
+    <div class="edit-sub" id="edit-sub"></div>
+    <div class="edit-fields">
+      <div class="edit-field">
+        <label>Quantidade em Estoque</label>
+        <input type="number" id="edit-qtd" min="0" inputmode="numeric"
+          onkeydown="if(event.key==='Enter') document.getElementById('edit-custo').focus()">
+      </div>
+      <div class="edit-field">
+        <label>Custo (R$)</label>
+        <input type="text" id="edit-custo" inputmode="numeric" oninput="mascaraMoeda(this)"
+          onkeydown="if(event.key==='Enter') document.getElementById('edit-venda').focus()">
+      </div>
+      <div class="edit-field">
+        <label>Preço de Venda (R$)</label>
+        <input type="text" id="edit-venda" inputmode="numeric" oninput="mascaraMoeda(this)"
+          onkeydown="if(event.key==='Enter') salvarEditPreco()">
+      </div>
+    </div>
+    <div class="edit-btns">
+      <button class="btn btn-cancel" onclick="fecharEditPreco()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEditPreco()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL ITEM ═══ -->
+<div id="venda-modal">
+  <div class="modal-box">
+    <div class="modal-produto" id="modal-nome">—</div>
+    <div class="modal-estoque-txt">Disponível: <strong id="modal-estoque">0</strong> unidades</div>
+    <div class="modal-field">
+      <label>Quantidade</label>
+      <input type="number" id="modal-qtd" min="1" placeholder="0" oninput="atualizarSubtotal()">
+    </div>
+    <div class="modal-subtotal">
+      <span class="modal-subtotal-label">Subtotal</span>
+      <span class="modal-subtotal-val" id="modal-subtotal">R$ 0,00</span>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-cancel" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-green" onclick="adicionarAoCarrinho()">+ Adicionar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL CUPOM ═══ -->
+<div id="cupom-modal">
+  <div class="cupom-box">
+    <div class="cupom-inner" id="cupom-print-area">
+      <div class="cupom-header">
+        <h2>🛒 MERCADINHO</h2>
+        <p id="cupom-datetime"></p>
+      </div>
+      <div class="cupom-cliente">
+        👤 Cliente: <strong id="cupom-cliente-nome">—</strong>
+      </div>
+      <div id="cupom-itens-lista"></div>
+      <div class="cupom-total">
+        <span>TOTAL A PAGAR</span>
+        <span class="cv" id="cupom-total-val">R$ 0,00</span>
+      </div>
+      <div class="cupom-footer">✨ Obrigado pela preferência! Volte sempre! ✨</div>
+    </div>
+    <div class="cupom-acoes">
+      <button class="btn btn-cancel" onclick="fecharCupom()">✕ Fechar</button>
+      <button class="btn btn-primary" onclick="imprimirCupom()">🖨 Imprimir</button>
+      <button class="btn btn-orange" style="flex-basis:100%" onclick="compartilharCupom()">📤 Compartilhar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ESTATÍSTICAS ═══ -->
+<div id="page-stats" class="page">
+  <div class="page-header">
+    <div class="page-title">📊 Estatísticas</div>
+    <div class="page-sub">Consolidado completo de todas as vendas registradas</div>
+  </div>
+
+  <!-- Cards resumo -->
+  <div class="stats-grid" id="stats-cards"></div>
+
+  <!-- Ranking produtos -->
+  <div class="table-wrap" style="margin-bottom:24px">
+    <div class="table-head">
+      <span class="table-head-title">🏆 Produtos Mais Vendidos</span>
+      <span class="table-count" id="stats-count">—</span>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Produto</th><th>Qtd Total</th><th>Total Faturado</th><th>Participação</th></tr></thead>
+      <tbody id="stats-ranking"></tbody>
+    </table>
+  </div>
+
+  <!-- Resumo por dia -->
+  <div class="table-wrap" style="margin-bottom:24px">
+    <div class="table-head">
+      <span class="table-head-title">📅 Faturamento por Dia</span>
+      <span class="table-count" id="stats-dias-count">—</span>
+    </div>
+    <table>
+      <thead><tr><th>Data</th><th>Vendas</th><th>Itens</th><th>Total do Dia</th></tr></thead>
+      <tbody id="stats-dias"></tbody>
+    </table>
+  </div>
+
+  <!-- Clientes -->
+  <div class="table-wrap">
+    <div class="table-head">
+      <span class="table-head-title">👤 Clientes — Total Gasto</span>
+      <span class="table-count" id="stats-clientes-count">—</span>
+    </div>
+    <table>
+      <thead><tr><th>Cliente</th><th>Compras</th><th>Itens</th><th>Total Gasto</th></tr></thead>
+      <tbody id="stats-clientes"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── ESTADO ───
+let produtos = JSON.parse(localStorage.getItem('mkt_produtos') || '[]');
+let vendas   = JSON.parse(localStorage.getItem('mkt_vendas')   || '[]');
+let carrinho = []; // [{id, nome, qtd, precoUnit}]
+let modalId  = null;
+let ultimaVenda = null;
+
+function salvarProdutos(){ localStorage.setItem('mkt_produtos', JSON.stringify(produtos)); }
+function salvarVendas()  { localStorage.setItem('mkt_vendas',   JSON.stringify(vendas));   }
+
+function fmt(n){
+  return 'R$ ' + parseFloat(n||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function dataHoje(){ return new Date().toLocaleDateString('pt-BR'); }
+function agora(){ return new Date().toLocaleString('pt-BR'); }
+
+document.getElementById('ent-data').value = dataHoje();
+
+// ─── NAV ───
+// ─── NAVEGAÇÃO COM HISTÓRICO (botão Voltar Android) ───
+let paginaAtual = 'caixa';
+
+function showPage(id, btn){
+  if(paginaAtual === id) return; // já está nessa página
+  // Empurra estado no histórico só se for navegação pelo usuário
+  history.pushState({page: id}, '', '#' + id);
+  _ativarPagina(id);
+}
+
+function _ativarPagina(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const pageEl = document.getElementById('page-'+id);
+  if(pageEl) pageEl.classList.add('active');
+  // Ativa botão nav correspondente
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    if(b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+id+"'"))
+      b.classList.add('active');
+  });
+  paginaAtual = id;
+  renderAll();
+}
+
+// Intercepta botão Voltar do Android/Chrome
+window.addEventListener('popstate', function(e){
+  // Se algum modal estiver aberto, fecha ele e empurra de volta para não sair
+  if(document.getElementById('edit-modal').classList.contains('open')){
+    fecharEditPreco();
+    history.pushState({page: paginaAtual}, '', '#' + paginaAtual);
+    return;
+  }
+  if(document.getElementById('venda-modal').classList.contains('open')){
+    fecharModal();
+    history.pushState({page: paginaAtual}, '', '#' + paginaAtual);
+    return;
+  }
+  if(document.getElementById('cupom-modal').classList.contains('open')){
+    fecharCupom();
+    history.pushState({page: paginaAtual}, '', '#' + paginaAtual);
+    return;
+  }
+  const id = (e.state && e.state.page) ? e.state.page : 'caixa';
+  _ativarPagina(id);
+});
+
+// Inicializa histórico com a página inicial (caixa)
+history.replaceState({page: 'caixa'}, '', '#caixa');
+
+// ─── TOAST ───
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ─── CADASTRAR PRODUTO ───
+function cadastrarProduto(){
+  const nome  = document.getElementById('ent-nome').value.trim();
+  const qtd   = parseInt(document.getElementById('ent-qtd').value)||0;
+  const custo = parseMoeda(document.getElementById('ent-custo').value);
+  const venda = parseMoeda(document.getElementById('ent-venda').value);
+  const data  = document.getElementById('ent-data').value;
+  if(!nome)   { toast('⚠ Informe o nome!'); return; }
+  if(qtd<=0)  { toast('⚠ Quantidade inválida!'); return; }
+  const existe = produtos.find(p=>p.nome.toLowerCase()===nome.toLowerCase());
+  if(existe){
+    existe.qtd+=qtd; existe.custo=custo; existe.venda=venda; existe.data=data;
+    toast('✔ Estoque atualizado: '+nome);
+  } else {
+    produtos.push({id:Date.now(),nome,qtd,custo,venda,data});
+    toast('✔ Produto cadastrado: '+nome);
+  }
+  salvarProdutos(); renderAll();
+  ['ent-nome','ent-qtd','ent-custo','ent-venda'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ent-data').value=dataHoje();
+  document.getElementById('ent-nome').focus();
+}
+
+// ─── RENDER ENTRADA ───
+function renderEntrada(){
+  const tbody=document.getElementById('tabela-entrada');
+  const sorted=[...produtos].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  document.getElementById('ent-count').textContent=produtos.length+' iten'+(produtos.length===1?'':'s');
+  if(!sorted.length){ tbody.innerHTML='<tr><td colspan="6"><div class="empty"><div class="empty-icon">📦</div><div class="empty-text">Nenhum produto cadastrado</div></div></td></tr>'; return; }
+  tbody.innerHTML=sorted.map(p=>`<tr>
+    <td><strong>${p.nome}</strong></td>
+    <td class="mono">${p.qtd}</td>
+    <td class="mono">${fmt(p.custo)}</td>
+    <td class="mono">${fmt(p.venda)}</td>
+    <td class="mono" style="color:var(--ink3)">${p.data}</td>
+    <td><button class="btn btn-cancel btn-sm" onclick="abrirEditPreco(${p.id})" title="Editar">✏</button></td>
+  </tr>`).join('');
+}
+
+// ─── RENDER ESTOQUE ───
+function renderEstoque(){
+  const tbody=document.getElementById('tabela-estoque');
+  const sorted=[...produtos].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  document.getElementById('est-count').textContent=produtos.length+' iten'+(produtos.length===1?'':'s');
+  if(!sorted.length){ tbody.innerHTML='<tr><td colspan="5"><div class="empty"><div class="empty-icon">🏪</div><div class="empty-text">Estoque vazio</div></div></td></tr>'; return; }
+  const totalQtd   = sorted.reduce((a,p)=>a+p.qtd, 0);
+  const totalCusto = sorted.reduce((a,p)=>a+(p.custo*p.qtd), 0);
+  const totalVenda = sorted.reduce((a,p)=>a+(p.venda*p.qtd), 0);
+  tbody.innerHTML=sorted.map(p=>`<tr>
+    <td><strong>${p.nome}</strong></td>
+    <td><span class="qty-badge ${p.qtd>0?'qty-ok':'qty-zero'}">${p.qtd}</span></td>
+    <td class="mono">${fmt(p.custo)}</td>
+    <td class="mono">${fmt(p.venda)}</td>
+    <td class="mono" style="color:var(--ink3)">${p.data}</td>
+    <td><button class="btn btn-cancel btn-sm" onclick="abrirEditPreco(${p.id})" title="Editar preços">✏</button></td>
+  </tr>`).join('')+
+  `<tr class="total-row"><td>TOTAL EM ESTOQUE</td><td><span class="mono">${totalQtd} unidades</span></td><td><span class="mono">${fmt(totalCusto)}</span></td><td><span class="mono">${fmt(totalVenda)}</span></td><td></td><td></td></tr>`;
+}
+
+// ─── RENDER CAIXA ───
+function renderCaixa(){
+  const totalItens = carrinho.reduce((a,c)=>a+c.qtd, 0);
+  const totalVal   = carrinho.reduce((a,c)=>a+c.qtd*c.precoUnit, 0);
+  document.getElementById('carrinho-info').textContent = totalItens > 0
+    ? `${totalItens} item(ns) no carrinho` : 'Nenhum item adicionado';
+  document.getElementById('carrinho-total').textContent = fmt(totalVal);
+
+  const lista = document.getElementById('carrinho-lista');
+  const itens = document.getElementById('carrinho-itens');
+
+  if(carrinho.length === 0){
+    lista.style.display = 'none';
+    itens.innerHTML = '';
+  } else {
+    lista.style.display = 'block';
+    itens.innerHTML = carrinho.map(c=>`
+      <div class="carrinho-item-row">
+        <span class="ci-nome">${c.nome}</span>
+        <span class="ci-qtd">${c.qtd}×</span>
+        <span class="ci-val">${fmt(c.qtd * c.precoUnit)}</span>
+        <button class="ci-del" onclick="removerDoCarrinho(${c.id})" title="Remover">✕</button>
+      </div>
+    `).join('');
+  }
+}
+
+// ─── SELETOR DE PRODUTO (CAIXA) ───
+let psIdx = -1;
+let psFiltrados = [];
+let psProdutoSelecionado = null;
+
+function psBuscar(){
+  const val  = document.getElementById('ps-busca').value.trim().toLowerCase();
+  const drop = document.getElementById('ps-dropdown');
+  psIdx = -1;
+  // Se o usuário voltou a digitar, esconde a confirmação
+  psEsconderConfirm();
+
+  const disponiveis = produtos.filter(p=>{
+    const nc = carrinho.find(c=>c.id===p.id);
+    return (p.qtd - (nc ? nc.qtd : 0)) > 0;
+  });
+
+  psFiltrados = val.length === 0
+    ? disponiveis.sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).slice(0,80)
+    : disponiveis.filter(p=>p.nome.toLowerCase().startsWith(val))
+        .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).slice(0,60);
+
+  if(!psFiltrados.length){ drop.classList.remove('open'); return; }
+
+  const esc = val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re  = val ? new RegExp(`(${esc})`,'gi') : null;
+
+  drop.innerHTML = psFiltrados.map((p,i)=>`
+    <div class="ps-item" data-i="${i}" onmousedown="psEscolher(${p.id})">
+      <span class="ps-item-nome">${re ? p.nome.replace(re,'<mark>$1</mark>') : p.nome}</span>
+      <span class="ps-item-right">
+        <span class="ps-item-preco">${fmt(p.venda)}</span>
+        <span class="ps-item-estq">estoque: ${p.qtd - (carrinho.find(c=>c.id===p.id)?.qtd||0)}</span>
+      </span>
+    </div>`).join('');
+
+  drop.classList.add('open');
+}
+
+function psEscolher(id){
+  const p = produtos.find(x=>x.id===id);
+  if(!p) return;
+  psProdutoSelecionado = p;
+  document.getElementById('ps-busca').value = p.nome;
+  document.identifier = id;
+  document.getElementById('ps-dropdown').classList.remove('open');
+  psIdx = -1;
+
+  const nc   = carrinho.find(c=>c.id===p.id);
+  const disp = p.qtd - (nc ? nc.qtd : 0);
+
+  // Mostrar painel de confirmação
+  document.getElementById('ps-confirm-nome').textContent  = p.nome;
+  document.getElementById('ps-confirm-preco').textContent = `${fmt(p.venda)} / unidade  ·  estoque disponível: ${disp}`;
+  const qtdEl = document.getElementById('ps-qtd');
+  qtdEl.value = 1;
+  qtdEl.max   = disp;
+  document.getElementById('ps-confirm').classList.add('show');
+  psCalcSubtotal();
+  setTimeout(()=>qtdEl.select(), 50);
+}
+
+function psEsconderConfirm(){
+  psProdutoSelecionado = null;
+  document.getElementById('ps-confirm').classList.remove('show');
+  document.getElementById('ps-subtotal').textContent = 'R$ 0,00';
+}
+
+function psCalcSubtotal(){
+  if(!psProdutoSelecionado) return;
+  const qtd = parseInt(document.getElementById('ps-qtd').value)||0;
+  document.getElementById('ps-subtotal').textContent = fmt(qtd * psProdutoSelecionado.venda);
+}
+
+function psTecla(e){
+  const drop  = document.getElementById('ps-dropdown');
+  const items = drop.querySelectorAll('.ps-item');
+  if(!drop.classList.contains('open')) return;
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    psIdx = Math.min(psIdx+1, items.length-1);
+    items.forEach((el,i)=>el.classList.toggle('sel',i===psIdx));
+    if(items[psIdx]) items[psIdx].scrollIntoView({block:'nearest'});
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    psIdx = Math.max(psIdx-1, -1);
+    items.forEach((el,i)=>el.classList.toggle('sel',i===psIdx));
+  } else if(e.key==='Enter'){
+    if(psIdx>=0 && psFiltrados[psIdx]){ e.preventDefault(); psEscolher(psFiltrados[psIdx].id); }
+    else drop.classList.remove('open');
+  } else if(e.key==='Escape'){
+    drop.classList.remove('open'); psIdx=-1;
+  }
+}
+
+function psAdicionar(){
+  if(!psProdutoSelecionado){
+    toast('⚠ Selecione um produto da lista.');
+    document.getElementById('ps-busca').focus();
+    return;
+  }
+  const p    = psProdutoSelecionado;
+  const qtd  = parseInt(document.getElementById('ps-qtd').value)||0;
+  const nc   = carrinho.find(c=>c.id===p.id);
+  const disp = p.qtd - (nc ? nc.qtd : 0);
+  if(qtd <= 0){ toast('⚠ Informe a quantidade.'); document.getElementById('ps-qtd').focus(); return; }
+  if(qtd > disp){ toast(`⚠ Disponível: apenas ${disp} unidade(s).`); return; }
+
+  if(nc){ nc.qtd += qtd; } else { carrinho.push({id:p.id, nome:p.nome, qtd, precoUnit:p.venda}); }
+
+  toast(`✔ ${qtd}× ${p.nome} — ${fmt(qtd*p.venda)}`);
+
+  // Limpar e volcar foco para buscar próximo produto
+  document.getElementById('ps-busca').value = '';
+  psEsconderConfirm();
+  document.getElementById('ps-dropdown').classList.remove('open');
+  renderCaixa();
+  setTimeout(()=>{ document.getElementById('ps-busca').focus(); }, 60);
+}
+
+function removerDoCarrinho(id){
+  carrinho = carrinho.filter(c=>c.id!==id);
+  renderCaixa();
+}
+
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#page-caixa .produto-selector'))
+    document.getElementById('ps-dropdown').classList.remove('open');
+});
+
+// ─── EDITAR PREÇOS ───
+let editId = null;
+
+function abrirEditPreco(id){
+  const p = produtos.find(x=>x.id===id);
+  if(!p) return;
+  editId = id;
+  document.getElementById('edit-nome').textContent = p.nome;
+  document.getElementById('edit-sub').textContent  = `Entrada: ${p.data}`;
+  document.getElementById('edit-qtd').value  = p.qtd;
+  const custoEl = document.getElementById('edit-custo');
+  const vendaEl = document.getElementById('edit-venda');
+  custoEl.value = parseFloat(p.custo||0).toFixed(2).replace('.',',');
+  vendaEl.value = parseFloat(p.venda||0).toFixed(2).replace('.',',');
+  document.getElementById('edit-modal').classList.add('open');
+  history.pushState({page: paginaAtual, modal: 'edit'}, '', '#'+paginaAtual+'-edit');
+  setTimeout(()=>{ document.getElementById('edit-qtd').select(); }, 80);
+}
+
+function fecharEditPreco(){
+  document.getElementById('edit-modal').classList.remove('open');
+  editId = null;
+}
+
+function salvarEditPreco(){
+  const p = produtos.find(x=>x.id===editId);
+  if(!p) return;
+  const novaQtd   = parseInt(document.getElementById('edit-qtd').value);
+  const novoCusto = parseMoeda(document.getElementById('edit-custo').value);
+  const novoVenda = parseMoeda(document.getElementById('edit-venda').value);
+  if(isNaN(novaQtd) || novaQtd < 0){ toast('⚠ Quantidade inválida.'); return; }
+  if(novoVenda <= 0){ toast('⚠ Preço de venda deve ser maior que zero.'); return; }
+  p.qtd   = novaQtd;
+  p.custo = novoCusto;
+  p.venda = novoVenda;
+  salvarProdutos();
+  fecharEditPreco();
+  renderAll();
+  toast(`✔ Preços de "${p.nome}" atualizados`);
+}
+
+document.getElementById('edit-modal').addEventListener('click',function(e){
+  if(e.target===this) fecharEditPreco();
+});
+
+
+function abrirModal(id){
+  const p=produtos.find(x=>x.id===id);
+  const nc=carrinho.find(c=>c.id===id);
+  const disp=p.qtd-(nc?nc.qtd:0);
+  if(!p||disp===0){ toast('⚠ Sem estoque disponível!'); return; }
+  modalId=id;
+  document.getElementById('modal-nome').textContent=p.nome;
+  document.getElementById('modal-estoque').textContent=disp;
+  document.getElementById('modal-qtd').value='';
+  document.getElementById('modal-subtotal').textContent='R$ 0,00';
+  document.getElementById('venda-modal').classList.add('open');
+  history.pushState({page: paginaAtual, modal: 'venda'}, '', '#'+paginaAtual+'-venda');
+  setTimeout(()=>document.getElementById('modal-qtd').focus(),80);
+}
+function fecharModal(){ document.getElementById('venda-modal').classList.remove('open'); modalId=null; }
+function atualizarSubtotal(){
+  const p=produtos.find(x=>x.id===modalId);
+  if(!p) return;
+  const qtd=parseInt(document.getElementById('modal-qtd').value)||0;
+  document.getElementById('modal-subtotal').textContent=fmt(qtd*p.venda);
+}
+function adicionarAoCarrinho(){
+  const p=produtos.find(x=>x.id===modalId); if(!p) return;
+  const qtd=parseInt(document.getElementById('modal-qtd').value)||0;
+  const nc=carrinho.find(c=>c.id===modalId);
+  const disp=p.qtd-(nc?nc.qtd:0);
+  if(qtd<=0){ toast('⚠ Informe a quantidade!'); return; }
+  if(qtd>disp){ toast(`⚠ Disponível: ${disp} unidades`); return; }
+  if(nc){ nc.qtd+=qtd; } else { carrinho.push({id:p.id,nome:p.nome,qtd,precoUnit:p.venda}); }
+  fecharModal(); renderCaixa();
+  toast(`✔ ${qtd}x ${p.nome} adicionado ao carrinho`);
+}
+
+// ─── LIMPAR CARRINHO ───
+function limparCarrinho(){
+  if(carrinho.length===0) return;
+  if(!confirm('Limpar o carrinho?')) return;
+  carrinho=[];
+  document.getElementById('caixa-cliente').value='';
+  renderCaixa();
+}
+
+// ─── FINALIZAR COMPRA ───
+function finalizarCompra(){
+  const cliente=document.getElementById('caixa-cliente').value.trim()||'Cliente';
+  if(carrinho.length===0){ toast('⚠ Carrinho vazio!'); return; }
+
+  // Baixa no estoque
+  carrinho.forEach(item=>{
+    const p=produtos.find(x=>x.id===item.id);
+    if(p) p.qtd-=item.qtd;
+  });
+  salvarProdutos();
+
+  // Salvar venda
+  const totalVenda=carrinho.reduce((a,c)=>a+c.qtd*c.precoUnit,0);
+  ultimaVenda={id:Date.now(),cliente,data:dataHoje(),hora:agora(),itens:[...carrinho],total:totalVenda};
+  vendas.push(ultimaVenda);
+  salvarVendas();
+
+  // Abrir cupom
+  abrirCupom(ultimaVenda);
+
+  // Resetar carrinho
+  carrinho=[];
+  document.getElementById('caixa-cliente').value='';
+  renderAll();
+}
+
+// ─── CUPOM ───
+function abrirCupom(reg){
+  document.getElementById('cupom-cliente-nome').textContent=reg.cliente;
+  document.getElementById('cupom-datetime').textContent=reg.hora;
+  document.getElementById('cupom-itens-lista').innerHTML=reg.itens.map(item=>`
+    <div class="cupom-linha">
+      <span class="c-nome">${item.nome}</span>
+      <span class="c-qtd">${item.qtd}x</span>
+      <span class="c-val">${fmt(item.qtd*item.precoUnit)}</span>
+    </div>
+    <div class="cupom-unit">${fmt(item.precoUnit)} / unidade</div>
+  `).join('');
+  document.getElementById('cupom-total-val').textContent=fmt(reg.total);
+  document.getElementById('cupom-modal').classList.add('open');
+}
+function fecharCupom(){ document.getElementById('cupom-modal').classList.remove('open'); }
+function imprimirCupom(){ window.print(); }
+function compartilharCupom(){
+  if(!ultimaVenda) return;
+  let txt=`🛒 *MERCADINHO*\n${ultimaVenda.hora}\n👤 *${ultimaVenda.cliente}*\n\n`;
+  ultimaVenda.itens.forEach(item=>{
+    txt+=`▪ ${item.nome}\n  ${item.qtd}x ${fmt(item.precoUnit)} = ${fmt(item.qtd*item.precoUnit)}\n`;
+  });
+  txt+=`\n💰 *TOTAL: ${fmt(ultimaVenda.total)}*\n\nObrigado! 😊`;
+  if(navigator.share){
+    navigator.share({title:'Compra Mercadinho',text:txt}).catch(()=>copiarTexto(txt));
+  } else { copiarTexto(txt); }
+}
+function copiarTexto(txt){
+  navigator.clipboard.writeText(txt)
+    .then(()=>toast('✔ Cupom copiado! Cole no WhatsApp.'))
+    .catch(()=>toast('⚠ Não foi possível copiar'));
+}
+
+// ─── RELATÓRIO ───
+function renderRelatorio(){
+  const el=document.getElementById('relatorio-conteudo');
+  if(!vendas.length){
+    el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">Nenhuma venda registrada ainda</div></div>';
+    return;
+  }
+  const porDia={};
+  vendas.forEach(v=>{ if(!porDia[v.data]) porDia[v.data]=[]; porDia[v.data].push(v); });
+  const dias=Object.keys(porDia).sort((a,b)=>{
+    const p=s=>{ const[d,m,y]=s.split('/'); return new Date(`${y}-${m}-${d}`); };
+    return p(b)-p(a);
+  });
+  el.innerHTML=dias.map(dia=>{
+    const vd=porDia[dia];
+    const td=vd.reduce((a,v)=>a+v.total,0);
+    return `<div class="rel-day-block">
+      <div class="rel-day-title"><span>📅 ${dia}</span><span class="rel-day-sum">${fmt(td)}</span></div>
+      ${vd.map(v=>`
+        <div class="rel-venda-card">
+          <div class="rel-venda-header">
+            <div><div class="rel-venda-nome">👤 ${v.cliente}</div><div class="rel-venda-hora">${v.hora}</div></div>
+            <div class="rel-venda-total">${fmt(v.total)}</div>
+          </div>
+          <div class="rel-venda-itens">
+            ${v.itens.map(i=>`<div class="rel-venda-item"><span>${i.nome} × ${i.qtd}</span><span class="mono">${fmt(i.qtd*i.precoUnit)}</span></div>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+}
+function limparRelatorio(){
+  if(!confirm('Apagar todo o relatório de vendas?')) return;
+  vendas=[]; salvarVendas(); renderRelatorio();
+  toast('🗑 Relatório apagado');
+}
+
+// ─── EVENTOS ───
+document.getElementById('venda-modal').addEventListener('click',function(e){ if(e.target===this) fecharModal(); });
+document.getElementById('cupom-modal').addEventListener('click',function(e){ if(e.target===this) fecharCupom(); });
+document.getElementById('modal-qtd').addEventListener('keydown',function(e){ if(e.key==='Enter') adicionarAoCarrinho(); });
+// ─── LISTA DE PRODUTOS SUPERMERCADO ───
+const LISTA_PRODUTOS = [
+  "Abacate Geada Kg",
+  "Abacate Hass Unidade",
+  "Abacate Manteiga Kg",
+  "Abacaxi Desidratado 100g",
+  "Abacaxi Gomo de Mel Unidade",
+  "Abacaxi Mini Unidade",
+  "Abacaxi Pérola Unidade",
+  "Abobrinha Italiana Kg",
+  "Abobrinha Verde Kg",
+  "Absorvente Interno Regular 8 unidades",
+  "Absorvente com Abas Normal 8 unidades",
+  "Absorvente com Abas Noturno 8 unidades",
+  "Absorvente sem Abas 8 unidades",
+  "Abóbora Japonesa Kg",
+  "Abóbora Paulista Kg",
+  "Abóbora Pescoço Kg",
+  "Acelga Maço",
+  "Acerola Kg",
+  "Achocolatado Líquido 1L",
+  "Achocolatado Líquido 200ml",
+  "Achocolatado em Pó 400g",
+  "Achocolatado em Pó 800g",
+  "Acém Kg",
+  "Adoçante Aspartame 60ml",
+  "Adoçante Sacarina 60ml",
+  "Adoçante Stevia 60ml",
+  "Adoçante Sucralose 60ml",
+  "Adoçante em Pó Stevia 50g",
+  "Agar Agar 10g",
+  "Agrião Maço",
+  "Alcachofra Unidade",
+  "Alcatra Kg",
+  "Alecrim 10g",
+  "Alface Americana Unidade",
+  "Alface Crespa Unidade",
+  "Alface Lisa Unidade",
+  "Alface Roxa Unidade",
+  "Alho Importado Bandeja",
+  "Alho Nacional Bandeja",
+  "Alho Poró Maço",
+  "Almeirão Maço",
+  "Almôndega Congelada 500g",
+  "Amaciante Baby 1L",
+  "Amaciante Concentrado 1L",
+  "Amaciante Lavanda 1L",
+  "Amaciante Lavanda 2L",
+  "Amaranto 200g",
+  "Ameixa Seca 200g",
+  "Amendoim Japonês 200g",
+  "Amendoim Salgado 200g",
+  "Amendoim Torrado com Sal 200g",
+  "Amendoim Torrado sem Sal 200g",
+  "Amido de Milho 500g",
+  "Amora 100g",
+  "Aparelho de Barbear 2 lâminas",
+  "Aparelho de Barbear 3 lâminas",
+  "Apresuntado Fatiado 200g",
+  "Arroz Agulhinha 5kg",
+  "Arroz Arbóreo 1kg",
+  "Arroz Branco Tipo 1 1kg",
+  "Arroz Branco Tipo 1 2kg",
+  "Arroz Branco Tipo 1 5kg",
+  "Arroz Branco Tipo 2 5kg",
+  "Arroz Cateto 1kg",
+  "Arroz Integral 1kg",
+  "Arroz Integral 5kg",
+  "Arroz Jasmine 1kg",
+  "Arroz Negro 500g",
+  "Arroz Parboilizado 1kg",
+  "Arroz Parboilizado 5kg",
+  "Arroz Vermelho 500g",
+  "Arroz para Sushi 500g",
+  "Asa de Frango Kg",
+  "Aspargo Maço",
+  "Atum em Lata 300g",
+  "Atum em Lata com Água 170g",
+  "Atum em Lata com Óleo 170g",
+  "Aveia em Farelo 500g",
+  "Aveia em Flocos Finos 500g",
+  "Aveia em Flocos Grossos 500g",
+  "Avelã 100g",
+  "Azeite de Oliva Clássico 500ml",
+  "Azeite de Oliva Extra Virgem 1L",
+  "Azeite de Oliva Extra Virgem 250ml",
+  "Azeite de Oliva Extra Virgem 500ml",
+  "Azeitona Preta com Caroço 150g",
+  "Azeitona Preta sem Caroço 150g",
+  "Azeitona Recheada com Pimenta 150g",
+  "Azeitona Verde com Caroço 150g",
+  "Azeitona Verde sem Caroço 150g",
+  "Açaí Congelado 1kg",
+  "Açaí Congelado 400g",
+  "Açúcar Baunilhado 250g",
+  "Açúcar Cristal 1kg",
+  "Açúcar Cristal 5kg",
+  "Açúcar Demerara 1kg",
+  "Açúcar Impalpável 500g",
+  "Açúcar Mascavo 1kg",
+  "Açúcar Refinado 1kg",
+  "Açúcar Refinado 5kg",
+  "Açúcar de Coco 300g",
+  "Baby Leaf 100g",
+  "Bacon em Cubos 200g",
+  "Bacon em Fatias 200g",
+  "Bacon em Peça 500g",
+  "Bala de Caramelo 100g",
+  "Bala de Goma 100g",
+  "Bala de Menta 100g",
+  "Balde 10L Unidade",
+  "Balde 15L Unidade",
+  "Banana Maçã Kg",
+  "Banana Nanica Kg",
+  "Banana Passa 200g",
+  "Banana Prata Kg",
+  "Banana da Terra Kg",
+  "Banha de Porco 500g",
+  "Barbecue 340g",
+  "Batata Asterix Kg",
+  "Batata Baroa Kg",
+  "Batata Crocante Congelada 400g",
+  "Batata Doce Laranja Kg",
+  "Batata Doce Roxa Kg",
+  "Batata Inglesa Kg",
+  "Batata Monalisa Kg",
+  "Batata Rústica Congelada 400g",
+  "Bebida Láctea 200ml",
+  "Berinjela Kg",
+  "Berinjela em Conserva 200g",
+  "Beterraba Baby 300g",
+  "Beterraba Kg",
+  "Bicarbonato de Sódio 200g",
+  "Biscoito Amanteigado Baunilha 200g",
+  "Biscoito Amanteigado Coco 200g",
+  "Biscoito Amanteigado Morango 200g",
+  "Biscoito Cookie Aveia e Passas 100g",
+  "Biscoito Cookie Chocolate 100g",
+  "Biscoito Cookie Gotas de Chocolate 100g",
+  "Biscoito Cream Cracker 200g",
+  "Biscoito Integral Aveia 200g",
+  "Biscoito Integral Multigrãos 200g",
+  "Biscoito Maisena 200g",
+  "Biscoito Maizena com Coco 200g",
+  "Biscoito Oreo Original 96g",
+  "Biscoito Polvilho Doce 100g",
+  "Biscoito Polvilho Salgado 100g",
+  "Biscoito Recheado Baunilha 130g",
+  "Biscoito Recheado Chocolate 130g",
+  "Biscoito Recheado Laranja 130g",
+  "Biscoito Recheado Limão 130g",
+  "Biscoito Recheado Morango 130g",
+  "Biscoito Wafer Baunilha 100g",
+  "Biscoito Wafer Chocolate 100g",
+  "Biscoito Wafer Limão 100g",
+  "Biscoito Wafer Morango 100g",
+  "Biscoito Água e Sal 200g",
+  "Bisnaguinha 6 unidades",
+  "Bisteca Suína Kg",
+  "Bolacha de Arroz Infantil 100g",
+  "Broa de Milho Unidade",
+  "Brócolis Maço",
+  "Brócolis Ninja Unidade",
+  "Cacau em Pó 100% 200g",
+  "Cachaça Tradicional 700ml",
+  "Café Solúvel Tradicional 100g",
+  "Café Solúvel Tradicional 50g",
+  "Café em Cápsula Espresso 10 unidades",
+  "Café em Cápsula Lungo 10 unidades",
+  "Café em Pó Extraforte 250g",
+  "Café em Pó Forte 250g",
+  "Café em Pó Gourmet 250g",
+  "Café em Pó Tradicional 250g",
+  "Café em Pó Tradicional 500g",
+  "Caldo de Camarão Tablete 57g",
+  "Caldo de Carne Tablete 57g",
+  "Caldo de Carne em Pó 100g",
+  "Caldo de Galinha Tablete 57g",
+  "Caldo de Galinha em Pó 100g",
+  "Caldo de Legumes Tablete 57g",
+  "Caldo de Peixe Tablete 57g",
+  "Camarão Cinza Limpo 500g",
+  "Camarão Médio Congelado 500g",
+  "Camarão Pistola Congelado 500g",
+  "Canela em Pau 30g",
+  "Canela em Pó 30g",
+  "Canjica Amarela 500g",
+  "Canjica Branca 500g",
+  "Caqui Fuyu Kg",
+  "Carambola Kg",
+  "Cardamomo 20g",
+  "Carne Moída Acém Kg",
+  "Carne Moída Patinho Kg",
+  "Carne Moída Traseira Kg",
+  "Cará Kg",
+  "Castanha de Caju Natural 100g",
+  "Castanha de Caju Salgada 100g",
+  "Castanha do Pará 100g",
+  "Cebola Branca Kg",
+  "Cebola Roxa Kg",
+  "Cebola em Conserva 300g",
+  "Cebolinha Maço",
+  "Cenoura Baby 200g",
+  "Cenoura Kg",
+  "Cera Líquida para Piso 750ml",
+  "Cereal Infantil de Arroz 200g",
+  "Cereal Matinal 300g",
+  "Cerveja 600ml",
+  "Cerveja Artesanal IPA 355ml",
+  "Cerveja Artesanal Pilsen 355ml",
+  "Cerveja Lata 350ml",
+  "Cerveja Long Neck 355ml",
+  "Cerveja sem Álcool 350ml",
+  "Chia 200g",
+  "Chiclete Menta Pacote",
+  "Chicória Maço",
+  "Chimichurri 30g",
+  "Chocolate Amargo 70% 100g",
+  "Chocolate Amargo 85% 100g",
+  "Chocolate Ao Leite 100g",
+  "Chocolate Ao Leite 200g",
+  "Chocolate Branco 100g",
+  "Chocolate com Amendoim 100g",
+  "Chocolate com Avelã 100g",
+  "Chocolate com Castanha 100g",
+  "Chocolate com Menta 100g",
+  "Chocolate em Pó 50% Cacau 200g",
+  "Chocolate em Pó 50% Cacau 400g",
+  "Chuchu Kg",
+  "Chá Boldo 10 sachês",
+  "Chá Camomila 10 sachês",
+  "Chá Erva Cidreira 10 sachês",
+  "Chá Erva Doce 10 sachês",
+  "Chá Gengibre e Limão 10 sachês",
+  "Chá Hibisco 10 sachês",
+  "Chá Hortelã 10 sachês",
+  "Chá Mate 500g",
+  "Chá Melissa 10 sachês",
+  "Chá Preto 10 sachês",
+  "Chá Verde 10 sachês",
+  "Cobertura de Chocolate Branco 160g",
+  "Cobertura de Chocolate ao Leite 160g",
+  "Coco Ralado Seco 100g",
+  "Coco Ralado Seco 200g",
+  "Coco Ralado Úmido 100g",
+  "Coco Seco Unidade",
+  "Coco Verde Unidade",
+  "Coentro Maço",
+  "Coentro em Grão 30g",
+  "Coentro em Pó 30g",
+  "Colorau 100g",
+  "Cominho em Grão 30g",
+  "Cominho em Pó 30g",
+  "Condicionador Antiqueda 200ml",
+  "Condicionador Cabelos Normais 200ml",
+  "Condicionador Cabelos Secos 200ml",
+  "Condicionador Hidratante 200ml",
+  "Contrafilé Kg",
+  "Copa 100g",
+  "Copa Lombo Kg",
+  "Corn Flakes 300g",
+  "Costela Bovina Kg",
+  "Costela Suína Kg",
+  "Cotonete 100 unidades",
+  "Cotonete 200 unidades",
+  "Couve Flor Unidade",
+  "Couve Manteiga Maço",
+  "Couve Mineira Maço",
+  "Couve de Bruxelas 200g",
+  "Coxa de Frango Kg",
+  "Coxa e Sobrecoxa Kg",
+  "Coxinha Congelada 6 unidades",
+  "Coxinha da Asa Kg",
+  "Coxão Duro Kg",
+  "Coxão Mole Kg",
+  "Cranberry Desidratado 100g",
+  "Cravo da Índia 20g",
+  "Creme Chantilly 1L",
+  "Creme Chantilly 200ml",
+  "Creme Dental Infantil 50g",
+  "Creme Dental Menta 180g",
+  "Creme Dental Menta 90g",
+  "Creme Dental Sensível 90g",
+  "Creme Dental Whitening 90g",
+  "Creme Hidratante Corporal 400ml",
+  "Creme Hidratante para Mãos 50g",
+  "Creme de Avelã 200g",
+  "Creme de Avelã 350g",
+  "Creme de Barbear 200ml",
+  "Creme de Leite 200g",
+  "Creme de Leite 300g",
+  "Creme de Leite Light 200g",
+  "Creme de Leite UHT 200ml",
+  "Creme para Pentear 300ml",
+  "Cremogema 400g",
+  "Cremor Tártaro 50g",
+  "Croissant 4 unidades",
+  "Curry em Pó 30g",
+  "Cuscuz Marroquino 500g",
+  "Cuscuz de Milho 500g",
+  "Cúrcuma 50g",
+  "Damasco Seco 200g",
+  "Desentupidor Líquido 500ml",
+  "Desinfetante Citrus 500ml",
+  "Desinfetante Concentrado 1L",
+  "Desinfetante Lavanda 500ml",
+  "Desinfetante Pinho 500ml",
+  "Desodorante Aerossol Feminino 150ml",
+  "Desodorante Aerossol Masculino 150ml",
+  "Desodorante Creme Feminino 55g",
+  "Desodorante Roll-on Feminino 50ml",
+  "Desodorante Roll-on Masculino 50ml",
+  "Desodorante Stick Masculino 55g",
+  "Detergente Concentrado 500ml",
+  "Detergente Limão 500ml",
+  "Detergente Neutro 500ml",
+  "Detergente Neutro 5L",
+  "Doce de Leite Cremoso 400g",
+  "Doce de Leite Pastoso 400g",
+  "Edamame 200g",
+  "Energético Tradicional 250ml",
+  "Energético sem Açúcar 250ml",
+  "Enxaguante Bucal 500ml",
+  "Enxaguante Bucal Whitening 500ml",
+  "Ervas de Provence 20g",
+  "Ervilha Lata 200g",
+  "Ervilha Lata 400g",
+  "Ervilha Partida 500g",
+  "Ervilha Seca 500g",
+  "Ervilha Torta 200g",
+  "Ervilha e Cenoura Lata 300g",
+  "Escarola Unidade",
+  "Escova de Dente Adulto Dura",
+  "Escova de Dente Adulto Macia",
+  "Escova de Dente Adulto Média",
+  "Escova de Dente Infantil",
+  "Escova de Roupa Unidade",
+  "Espinafre Maço",
+  "Esponja de Aço 8 unidades",
+  "Esponja de Louça 3 unidades",
+  "Espuma de Barbear 200ml",
+  "Espumante Brut 750ml",
+  "Estragão 10g",
+  "Extrato de Tomate 130g",
+  "Extrato de Tomate 1kg",
+  "Extrato de Tomate 340g",
+  "Farinha Láctea 400g",
+  "Farinha de Amendoim 250g",
+  "Farinha de Amêndoas 200g",
+  "Farinha de Arroz 500g",
+  "Farinha de Aveia 500g",
+  "Farinha de Coco 200g",
+  "Farinha de Mandioca Crua 500g",
+  "Farinha de Mandioca Torrada 500g",
+  "Farinha de Milho 500g",
+  "Farinha de Milho Flocada 500g",
+  "Farinha de Rosca 500g",
+  "Farinha de Trigo Integral 1kg",
+  "Farinha de Trigo Tipo 1 1kg",
+  "Farinha de Trigo Tipo 1 5kg",
+  "Farinha de Trigo sem Glúten 500g",
+  "Farofa Pronta Tradicional 250g",
+  "Farofa Pronta com Bacon 250g",
+  "Feijão Branco 1kg",
+  "Feijão Branco 500g",
+  "Feijão Carioca 1kg",
+  "Feijão Carioca 2kg",
+  "Feijão Carioca 500g",
+  "Feijão Fradinho 500g",
+  "Feijão Jalo 500g",
+  "Feijão Mulatinho 500g",
+  "Feijão Preto 1kg",
+  "Feijão Preto 2kg",
+  "Feijão Preto 500g",
+  "Feijão Rajado 500g",
+  "Feijão Rosinha 500g",
+  "Feijão Verde 500g",
+  "Feijão de Corda 500g",
+  "Fermento Biológico Fresco 15g",
+  "Fermento Biológico Seco 10g",
+  "Fermento em Pó 100g",
+  "Fermento em Pó 200g",
+  "Figo Fresco Kg",
+  "Figo Seco 200g",
+  "Filme Plástico 30cm",
+  "Filé Mignon Kg",
+  "Filé de Bacalhau 500g",
+  "Filé de Frango Congelado 1kg",
+  "Filé de Merluza Congelado 500g",
+  "Filé de Peito de Frango Kg",
+  "Filé de Pescada Kg",
+  "Filé de Porco Kg",
+  "Filé de Salmão Congelado 300g",
+  "Filé de Salmão Resfriado Kg",
+  "Filé de Tilápia Congelado 500g",
+  "Filé de Tilápia Resfriado Kg",
+  "Fio Dental 50m",
+  "Fio Dental com Flúor 50m",
+  "Flocos de Milho 500g",
+  "Flor de Sal 100g",
+  "Formicida em Pó 200g",
+  "Fralda Descartável G Pacote",
+  "Fralda Descartável M Pacote",
+  "Fralda Descartável P Pacote",
+  "Fralda Descartável XG Pacote",
+  "Fralda Descartável XXG Pacote",
+  "Fraldinha Kg",
+  "Framboesa 100g",
+  "Frango Caipira Kg",
+  "Frango Inteiro Congelado Kg",
+  "Frango Inteiro Resfriado Kg",
+  "Frango Orgânico Kg",
+  "Fritas de Batata Congelada 400g",
+  "Fritas de Batata Congelada 800g",
+  "Frutas Cristalizadas 200g",
+  "Fubá Fino 1kg",
+  "Fubá Grosso 1kg",
+  "Gelatina em Pó Abacaxi 12g",
+  "Gelatina em Pó Diet 12g",
+  "Gelatina em Pó Limão 12g",
+  "Gelatina em Pó Morango 12g",
+  "Gelatina em Pó Uva 12g",
+  "Geleia Diet de Morango 250g",
+  "Geleia Mista 250g",
+  "Geleia de Damasco 250g",
+  "Geleia de Framboesa 250g",
+  "Geleia de Jabuticaba 250g",
+  "Geleia de Laranja 250g",
+  "Geleia de Morango 250g",
+  "Geleia de Uva 250g",
+  "Gengibre em Pó 30g",
+  "Germen de Trigo 200g",
+  "Goiaba Branca Kg",
+  "Goiaba Vermelha Kg",
+  "Goiabada 400g",
+  "Goiabada Cascão 400g",
+  "Goji Berry 100g",
+  "Gordura Vegetal 500g",
+  "Gordura de Coco 200g",
+  "Granola Proteica 400g",
+  "Granola Tradicional 400g",
+  "Granola com Frutas 400g",
+  "Granola sem Açúcar 400g",
+  "Granulado de Chocolate 100g",
+  "Granulado de Chocolate Colorido 100g",
+  "Graviola Kg",
+  "Grão de Bico 1kg",
+  "Grão de Bico 500g",
+  "Guardanapo de Papel 100 unidades",
+  "Guardanapo de Papel 50 unidades",
+  "Hambúrguer Bovino Congelado 4 unidades",
+  "Hambúrguer de Frango Congelado 4 unidades",
+  "Hortelã Maço",
+  "Inhame Kg",
+  "Inseticida em Spray 300ml",
+  "Iogurte Grego Mel 130g",
+  "Iogurte Grego Morango 130g",
+  "Iogurte Grego Natural 130g",
+  "Iogurte Natural 500g",
+  "Iogurte Natural Desnatado 170g",
+  "Iogurte Natural Integral 170g",
+  "Iogurte de Baunilha 170g",
+  "Iogurte de Coco 170g",
+  "Iogurte de Maracujá 170g",
+  "Iogurte de Morango 170g",
+  "Iogurte de Pêssego 170g",
+  "Iogurte para Beber 200ml",
+  "Isotônico Frutas 500ml",
+  "Isotônico Laranja 500ml",
+  "Isotônico Limão 500ml",
+  "Jabuticaba Kg",
+  "Jiló Kg",
+  "Ketchup 1kg",
+  "Ketchup Picante 400g",
+  "Ketchup Tradicional 400g",
+  "Kiwi Dourado Unidade",
+  "Kiwi Unidade",
+  "Lagarto Kg",
+  "Laranja Bahia Kg",
+  "Laranja Lima Kg",
+  "Laranja Navel Kg",
+  "Laranja Pera Kg",
+  "Lasanha Bolonhesa Congelada 600g",
+  "Lasanha Quatro Queijos Congelada 600g",
+  "Lasanha de Atum Congelada 600g",
+  "Lasanha de Frango Congelada 600g",
+  "Lava Louças em Pó 1kg",
+  "Lava Louças em Pó 500g",
+  "Leave-in 200ml",
+  "Leite Condensado 270g",
+  "Leite Condensado 395g",
+  "Leite Condensado Light 395g",
+  "Leite Desnatado UHT 1L",
+  "Leite Integral UHT 1L",
+  "Leite Semidesnatado UHT 1L",
+  "Leite Zero Lactose Desnatado 1L",
+  "Leite Zero Lactose Integral 1L",
+  "Leite de Amêndoas 1L",
+  "Leite de Arroz 1L",
+  "Leite de Aveia 1L",
+  "Leite de Coco 200ml",
+  "Leite de Coco 400ml",
+  "Leite de Soja 1L",
+  "Leite em Pó Desnatado 400g",
+  "Leite em Pó Infantil Estágio 1 400g",
+  "Leite em Pó Infantil Estágio 2 400g",
+  "Leite em Pó Integral 200g",
+  "Leite em Pó Integral 400g",
+  "Leite em Pó Integral 800g",
+  "Leite em Pó Zero Lactose 400g",
+  "Lentilha 500g",
+  "Lentilha Vermelha 500g",
+  "Lenço Umedecido 80 unidades",
+  "Lenço Umedecido Bebê 50 unidades",
+  "Lenço Umedecido Infantil 50 unidades",
+  "Lenço de Papel 100 unidades",
+  "Limpa Forno Spray 300ml",
+  "Limpa Vidros Spray 500ml",
+  "Limão Galego Kg",
+  "Limão Siciliano Kg",
+  "Limão Tahiti Kg",
+  "Linguiça Calabresa Crua 500g",
+  "Linguiça Calabresa Defumada 500g",
+  "Linguiça Portuguesa 500g",
+  "Linguiça Toscana Crua 500g",
+  "Linguiça Toscana Defumada 500g",
+  "Linguiça de Frango 500g",
+  "Linguiça de Peru 500g",
+  "Linhaça Dourada 200g",
+  "Linhaça Marrom 200g",
+  "Lombo Suíno Kg",
+  "Louro em Folha 5g",
+  "Loção Corporal 400ml",
+  "Lula em Anéis Congelada 300g",
+  "Lustrador de Móveis 200ml",
+  "Luva de Borracha Tamanho G",
+  "Luva de Borracha Tamanho M",
+  "Macadâmia 100g",
+  "Macarrão Borboleta 500g",
+  "Macarrão Capeletti 500g",
+  "Macarrão Conchinha 500g",
+  "Macarrão Espaguete 500g",
+  "Macarrão Espaguete Integral 500g",
+  "Macarrão Fusilli 500g",
+  "Macarrão Instantâneo Camarão 85g",
+  "Macarrão Instantâneo Carne 85g",
+  "Macarrão Instantâneo Frango 85g",
+  "Macarrão Instantâneo Galinha 85g",
+  "Macarrão Instantâneo Legumes 85g",
+  "Macarrão Instantâneo Queijo 85g",
+  "Macarrão Lasanha 500g",
+  "Macarrão Parafuso 500g",
+  "Macarrão Parafuso Integral 500g",
+  "Macarrão Penne 500g",
+  "Macarrão Penne Integral 500g",
+  "Macarrão Rigatoni 500g",
+  "Macarrão Talharim 500g",
+  "Macarrão Talharim Integral 500g",
+  "Macarrão de Arroz 300g",
+  "Macarrão de Milho 500g",
+  "Macaxeira Kg",
+  "Maionese 250g",
+  "Maionese 500g",
+  "Maionese Light 250g",
+  "Maminha Kg",
+  "Mamão Formosa Kg",
+  "Mamão Papaia Unidade",
+  "Mandioquinha Kg",
+  "Manga Desidratada 100g",
+  "Manga Haden Kg",
+  "Manga Palmer Kg",
+  "Manga Tommy Kg",
+  "Manjericão Maço",
+  "Manjericão Seco 10g",
+  "Manjerona 10g",
+  "Manteiga Ghee 200g",
+  "Manteiga com Sal 200g",
+  "Manteiga de Garrafa 200ml",
+  "Manteiga sem Sal 200g",
+  "Maracujá Azedo Kg",
+  "Maracujá Doce Kg",
+  "Margarina com Sal 250g",
+  "Margarina com Sal 500g",
+  "Margarina sem Sal 250g",
+  "Marmelada 400g",
+  "Marshmallow 250g",
+  "Mata Insetos 300ml",
+  "Maxixe Kg",
+  "Maçã Fuji Kg",
+  "Maçã Gala Kg",
+  "Maçã Verde Granny Smith Kg",
+  "Mel Puro 250g",
+  "Mel Puro 500g",
+  "Mel de Abelha Silvestre 300g",
+  "Melado de Cana 500ml",
+  "Melancia Kg",
+  "Melancia Mini Unidade",
+  "Melão Amarelo Kg",
+  "Melão Pele de Sapo Kg",
+  "Mexerica Kg",
+  "Milho Verde Lata 200g",
+  "Milho Verde Lata 400g",
+  "Milho Verde Seco 500g",
+  "Milho Verde Unidade",
+  "Milho de Pipoca 500g",
+  "Mingau de Arroz e Maçã 230g",
+  "Miolo de Alcatra Kg",
+  "Mirtilo 100g",
+  "Mistura para Bolo Branco 400g",
+  "Mistura para Bolo Multigrãos 400g",
+  "Mistura para Bolo de Cenoura 400g",
+  "Mistura para Bolo de Chocolate 400g",
+  "Mistura para Bolo de Coco 400g",
+  "Mistura para Bolo de Laranja 400g",
+  "Mix de Folhas 100g",
+  "Mix de Frutas Congelado 400g",
+  "Mix de Nozes 100g",
+  "Mix de Nuts 100g",
+  "Mix de Pimentas 30g",
+  "Molho Inglês Worcestershire 150ml",
+  "Molho Teriyaki 150ml",
+  "Molho Yakissoba 200ml",
+  "Molho de Ostras 150ml",
+  "Molho de Pimenta Tabasco 60ml",
+  "Molho de Pimenta Verde 150ml",
+  "Molho de Pimenta Vermelha 150ml",
+  "Molho de Tomate Napolitano 340g",
+  "Molho de Tomate Picante 340g",
+  "Molho de Tomate Tradicional 1kg",
+  "Molho de Tomate Tradicional 340g",
+  "Molho de Tomate com Alho 340g",
+  "Molho de Tomate com Manjericão 340g",
+  "Mop Fio Unidade",
+  "Morango 300g",
+  "Morango 500g",
+  "Mortadela Bologna 200g",
+  "Mortadela Fatiada 200g",
+  "Mortadela com Azeitona 200g",
+  "Mostarda Amarela 200g",
+  "Mostarda Dijon 200g",
+  "Mostarda Maço",
+  "Mostarda com Mel 200g",
+  "Muesli 400g",
+  "Multiuso Spray Lavanda 500ml",
+  "Multiuso Spray Limão 500ml",
+  "Máscara de Hidratação Capilar 250g",
+  "Músculo Kg",
+  "Nabo Maço",
+  "Nata 200g",
+  "Nhoque de Batata 500g",
+  "Noz Moscada Ralada 30g",
+  "Noz Pecan 100g",
+  "Noz Portuguesa 100g",
+  "Nuggets de Frango 300g",
+  "Nuggets de Frango Congelado 300g",
+  "Nuggets de Frango Congelado 500g",
+  "Néctar de Goiaba 1L",
+  "Néctar de Manga 1L",
+  "Néctar de Pêssego 1L",
+  "Orégano 10g",
+  "Orégano 30g",
+  "Ossobuco Kg",
+  "Paio 200g",
+  "Paleta Bovina Kg",
+  "Paleta Suína Kg",
+  "Palmito Juçara 300g",
+  "Palmito Pupunha Inteiro 300g",
+  "Palmito Pupunha Rodelas 300g",
+  "Pano Multiuso 3 unidades",
+  "Pano de Chão 2 unidades",
+  "Pano de Prato 2 unidades",
+  "Papel Alumínio 30cm 30m",
+  "Papel Alumínio 30cm 7,5m",
+  "Papel Higiênico Folha Dupla 12 rolos",
+  "Papel Higiênico Folha Dupla 4 rolos",
+  "Papel Higiênico Folha Dupla 8 rolos",
+  "Papel Higiênico Folha Simples 4 rolos",
+  "Papel Higiênico Folha Simples 8 rolos",
+  "Papel Higiênico Folha Tripla 4 rolos",
+  "Papel Higiênico Folha Tripla 8 rolos",
+  "Papel Manteiga 30cm",
+  "Papel Toalha Duplo 2 rolos",
+  "Papel Toalha Duplo 4 rolos",
+  "Papinha Carne com Legumes 170g",
+  "Papinha Frango com Legumes 170g",
+  "Papinha de Banana 170g",
+  "Papinha de Maçã 170g",
+  "Papinha de Pêra 170g",
+  "Pasta de Amendoim Crocante 450g",
+  "Pasta de Amendoim Tradicional 450g",
+  "Pasta de Amendoim com Chocolate 450g",
+  "Patinho Kg",
+  "Peito de Frango Kg",
+  "Peito de Peru Defumado Fatiado 200g",
+  "Peito de Peru Fatiado 200g",
+  "Pepino Caipira Kg",
+  "Pepino Japonês Kg",
+  "Pepino em Conserva Fatiado 300g",
+  "Pepino em Conserva Inteiro 300g",
+  "Pepperoni 100g",
+  "Pera Asiática Kg",
+  "Pera Portuguesa Kg",
+  "Pera Williams Kg",
+  "Pernil Suíno Kg",
+  "Physalis 100g",
+  "Picanha Kg",
+  "Picolé Cremoso de Chocolate Unidade",
+  "Picolé de Limão Unidade",
+  "Picolé de Uva Unidade",
+  "Pimenta Biquinho 100g",
+  "Pimenta Calabresa 50g",
+  "Pimenta Dedo de Moça 100g",
+  "Pimenta Dedo de Moça 30g",
+  "Pimenta Rosa 20g",
+  "Pimenta Verde 20g",
+  "Pimenta do Reino Branca Moída 30g",
+  "Pimenta do Reino Preta Moída 30g",
+  "Pimenta do Reino Preta em Grão 30g",
+  "Pimentão Amarelo Kg",
+  "Pimentão Laranja Kg",
+  "Pimentão Verde Kg",
+  "Pimentão Vermelho Kg",
+  "Pimentão em Conserva 300g",
+  "Pipoca Micro-ondas Manteiga 100g",
+  "Pipoca Micro-ondas Sal 100g",
+  "Pistache 100g",
+  "Pitanga Kg",
+  "Pitaya Amarela Unidade",
+  "Pitaya Vermelha Unidade",
+  "Pizza Congelada 4 Queijos 460g",
+  "Pizza Congelada Calabresa 460g",
+  "Pizza Congelada Frango com Catupiry 460g",
+  "Pizza Congelada Margherita 460g",
+  "Pizza Congelada Mussarela 460g",
+  "Pizza Congelada Portuguesa 460g",
+  "Polpa de Açaí 100g",
+  "Polpa de Caju 400g",
+  "Polpa de Goiaba 400g",
+  "Polpa de Maracujá 400g",
+  "Polpa de Morango 400g",
+  "Polvilho Azedo 500g",
+  "Polvilho Doce 500g",
+  "Pomada para Assadura 40g",
+  "Pomada para Assadura 80g",
+  "Presunto Cozido Fatiado 200g",
+  "Presunto Cru Fatiado 100g",
+  "Protetor Solar FPS 30 120ml",
+  "Protetor Solar FPS 50 120ml",
+  "Pudim em Pó Baunilha 40g",
+  "Pudim em Pó Chocolate 40g",
+  "Pudim em Pó Coco 40g",
+  "Purê de Tomate 520g",
+  "Páprica Defumada 30g",
+  "Páprica Doce 30g",
+  "Páprica Picante 30g",
+  "Pão Australiano Fatiado",
+  "Pão Francês Integral Unidade",
+  "Pão Francês Unidade",
+  "Pão Pita 5 unidades",
+  "Pão Pullman Integral",
+  "Pão Pullman Tradicional",
+  "Pão Sírio 5 unidades",
+  "Pão de Centeio Fatiado",
+  "Pão de Forma Branco Tradicional",
+  "Pão de Forma Integral",
+  "Pão de Forma Multigrãos",
+  "Pão de Forma Zero Lactose",
+  "Pão de Forma sem Glúten",
+  "Pão de Hambúrguer 4 unidades",
+  "Pão de Hot Dog 4 unidades",
+  "Pão de Hot Dog 8 unidades",
+  "Pão de Queijo Congelado 400g",
+  "Pão de Queijo Congelado Mini 400g",
+  "Pão de Queijo Pronto 6 unidades",
+  "Queijo Brie 125g",
+  "Queijo Camembert 125g",
+  "Queijo Coalho 200g",
+  "Queijo Coalho 500g",
+  "Queijo Cottage 200g",
+  "Queijo Cream Cheese 150g",
+  "Queijo Cream Cheese 300g",
+  "Queijo Emmental Fatiado 150g",
+  "Queijo Gorgonzola 200g",
+  "Queijo Gouda Fatiado 150g",
+  "Queijo Minas Curado 500g",
+  "Queijo Minas Frescal 500g",
+  "Queijo Minas Padrão 500g",
+  "Queijo Mussarela Fatiado 150g",
+  "Queijo Mussarela Fatiado 300g",
+  "Queijo Mussarela Peça 500g",
+  "Queijo Parmesão Ralado 100g",
+  "Queijo Parmesão Ralado 50g",
+  "Queijo Parmesão em Bloco 200g",
+  "Queijo Prato Fatiado 150g",
+  "Queijo Prato Fatiado 300g",
+  "Queijo Prato Peça 500g",
+  "Queijo Provolone 200g",
+  "Queijo Ricota 250g",
+  "Queijo Ricota Defumada 250g",
+  "Quiabo Kg",
+  "Quibe Congelado 500g",
+  "Quinoa Branca 250g",
+  "Quinoa Mista 250g",
+  "Quinoa Vermelha 250g",
+  "Quirera de Milho 1kg",
+  "Rabanete Maço",
+  "Refrigerante Cola 2L",
+  "Refrigerante Cola 350ml",
+  "Refrigerante Cola 600ml",
+  "Refrigerante Cola Zero 2L",
+  "Refrigerante Cola Zero 350ml",
+  "Refrigerante Framboesa 350ml",
+  "Refrigerante Guaraná 2L",
+  "Refrigerante Guaraná 350ml",
+  "Refrigerante Guaraná Zero 2L",
+  "Refrigerante Laranja 2L",
+  "Refrigerante Laranja 350ml",
+  "Refrigerante Limão 350ml",
+  "Refrigerante Maçã 350ml",
+  "Refrigerante Uva 350ml",
+  "Repelente Elétrico Refil 45 noites",
+  "Repolho Japonês Unidade",
+  "Repolho Roxo Unidade",
+  "Repolho Verde Unidade",
+  "Requeijão Cremoso 200g",
+  "Requeijão Cremoso 500g",
+  "Requeijão Light 200g",
+  "Requeijão de Copo 200g",
+  "Risole Congelado 6 unidades",
+  "Rodo 60cm Unidade",
+  "Romã Unidade",
+  "Rosquinha de Coco 200g",
+  "Rum 700ml",
+  "Rúcula Maço",
+  "Sabonete Líquido Antibacteriano 250ml",
+  "Sabonete Líquido Hidratante 250ml",
+  "Sabonete Líquido Suave 250ml",
+  "Sabonete em Barra Antibacteriano 90g",
+  "Sabonete em Barra Aveia 90g",
+  "Sabonete em Barra Lavanda 90g",
+  "Sabonete em Barra Suave 90g",
+  "Sabonete Íntimo Feminino 200ml",
+  "Sabão Líquido 1L",
+  "Sabão Líquido Concentrado 1L",
+  "Sabão em Barra 5 unidades",
+  "Sabão em Pó Color 1kg",
+  "Sabão em Pó Concentrado 1kg",
+  "Sabão em Pó Tradicional 1kg",
+  "Sabão em Pó Tradicional 2kg",
+  "Sabão em Pó Tradicional 5kg",
+  "Sacos para Lixo 100L 20 unidades",
+  "Sacos para Lixo 200L 10 unidades",
+  "Sacos para Lixo 30L 30 unidades",
+  "Sacos para Lixo 50L 30 unidades",
+  "Sal Defumado 200g",
+  "Sal Grosso 1kg",
+  "Sal Grosso 500g",
+  "Sal Light 500g",
+  "Sal Marinho 500g",
+  "Sal Refinado 1kg",
+  "Sal com Ervas 200g",
+  "Sal do Himalaia Rosa 500g",
+  "Salame Calabrês 100g",
+  "Salame Italiano Fatiado 100g",
+  "Salame Milano Fatiado 100g",
+  "Salgadinho Batata Frita Cebola 100g",
+  "Salgadinho Batata Frita Original 100g",
+  "Salgadinho Batata Frita Queijo 100g",
+  "Salgadinho Cheetos 100g",
+  "Salgadinho Doritos Nacho 140g",
+  "Salgadinho Fandangos 130g",
+  "Salgadinho Ruffles Original 100g",
+  "Salsicha Cocktail 250g",
+  "Salsicha Defumada 500g",
+  "Salsicha Hot Dog 500g",
+  "Salsicha Viena 500g",
+  "Salsicha de Frango 500g",
+  "Salsinha Maço",
+  "Sardinha Temperada 125g",
+  "Sardinha em Molho de Tomate 125g",
+  "Sardinha em Óleo 125g",
+  "Semente de Abóbora 100g",
+  "Semente de Gergelim 100g",
+  "Semente de Girassol 100g",
+  "Semente de Linhaça 100g",
+  "Shampoo 2 em 1 200ml",
+  "Shampoo Anticaspa 200ml",
+  "Shampoo Antiqueda 200ml",
+  "Shampoo Cabelos Coloridos 200ml",
+  "Shampoo Cabelos Normais 200ml",
+  "Shampoo Cabelos Normais 400ml",
+  "Shampoo Cabelos Oleosos 200ml",
+  "Shampoo Cabelos Secos 200ml",
+  "Shampoo Infantil 200ml",
+  "Shoyu Light 150ml",
+  "Shoyu Tradicional 150ml",
+  "Shoyu Tradicional 500ml",
+  "Sobrecoxa de Frango Kg",
+  "Soja em Grão 500g",
+  "Sorvete Chocolate 1,5L",
+  "Sorvete Chocolate 2L",
+  "Sorvete Creme 1,5L",
+  "Sorvete Creme 2L",
+  "Sorvete Flocos 1,5L",
+  "Sorvete Morango 1,5L",
+  "Sorvete Napolitano 1,5L",
+  "Suco de Abacaxi 1L",
+  "Suco de Caju 1L",
+  "Suco de Goiaba 1L",
+  "Suco de Laranja 1L",
+  "Suco de Manga 1L",
+  "Suco de Maracujá 1L",
+  "Suco de Maçã 1L",
+  "Suco de Pêssego 1L",
+  "Suco de Uva Integral 1L",
+  "Suco em Caixinha Laranja 200ml",
+  "Suco em Caixinha Maçã 200ml",
+  "Suco em Caixinha Uva 200ml",
+  "Suco em Pó Laranja 25g",
+  "Suco em Pó Limão 25g",
+  "Suco em Pó Uva 25g",
+  "Sucrilhos 300g",
+  "Sálvia 10g",
+  "Talco Corporal Clássico 100g",
+  "Talco Corporal Infantil 100g",
+  "Tangerina Murcote Kg",
+  "Tangerina Ponkan Kg",
+  "Tapioca Granulada 500g",
+  "Tapioca Hidratada 500g",
+  "Tempero Baiano 70g",
+  "Tempero Completo com Sal 300g",
+  "Tempero Completo sem Sal 300g",
+  "Tempero Italiano 20g",
+  "Tira Manchas Spray 500ml",
+  "Tomate Cereja 200g",
+  "Tomate Cereja 300g",
+  "Tomate Débora Kg",
+  "Tomate Italiano Kg",
+  "Tomate Longa Vida Kg",
+  "Tomate Pelado Inteiro Lata 400g",
+  "Tomate Pelado Triturado Lata 400g",
+  "Tomate Salada Kg",
+  "Tomate Sweet Grape 200g",
+  "Tomilho 10g",
+  "Torrada Integral 160g",
+  "Torrada Tradicional 160g",
+  "Torrada com Gergelim 160g",
+  "Trigo para Quibe 500g",
+  "Tâmara Seca 200g",
+  "Urucum em Pó 50g",
+  "Uva Itália Kg",
+  "Uva Niágara Kg",
+  "Uva Passa Branca 200g",
+  "Uva Passa Preta 200g",
+  "Uva Red Globe Kg",
+  "Uva Rubi Kg",
+  "Uva Thompson Kg",
+  "Vagem Holandesa 200g",
+  "Vagem Macarrão 200g",
+  "Vassoura Cerdas Duras Unidade",
+  "Vassoura Cerdas Macias Unidade",
+  "Vassoura de Palha Unidade",
+  "Vinagre Balsâmico 250ml",
+  "Vinagre de Maçã 750ml",
+  "Vinagre de Vinho Branco 500ml",
+  "Vinagre de Vinho Tinto 500ml",
+  "Vinagre de Álcool Branco 750ml",
+  "Vinho Branco Seco 750ml",
+  "Vinho Branco Suave 750ml",
+  "Vinho Rosé 750ml",
+  "Vinho Tinto Seco 750ml",
+  "Vinho Tinto Suave 750ml",
+  "Vodka 700ml",
+  "Whisky 700ml",
+  "Xarope de Agave 300ml",
+  "Xarope de Bordo 200ml",
+  "Água Mineral sem Gás 1,5L",
+  "Água Mineral sem Gás 500ml",
+  "Água Mineral sem Gás 5L",
+  "Água Sanitária 1L",
+  "Água Sanitária 2L",
+  "Água Sanitária 5L",
+  "Água Tônica 350ml",
+  "Água com Gás 1L",
+  "Água com Gás 500ml",
+  "Água de Coco 1L",
+  "Água de Coco 200ml",
+  "Álcool 70% Gel 1L",
+  "Álcool 70% Gel 500ml",
+  "Álcool 70% Líquido 1L",
+  "Óleo de Abacate 100ml",
+  "Óleo de Canola 900ml",
+  "Óleo de Coco 200ml",
+  "Óleo de Coco 500ml",
+  "Óleo de Gergelim 100ml",
+  "Óleo de Girassol 900ml",
+  "Óleo de Linhaça 100ml",
+  "Óleo de Milho 2L",
+  "Óleo de Milho 900ml",
+  "Óleo de Soja 2L",
+  "Óleo de Soja 900ml"
+].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+// ─── AUTOCOMPLETE ───
+let acIdx = -1;
+let acFiltrados = [];
+
+function acFiltrar(){
+  const val = document.getElementById('ent-nome').value.trim().toLowerCase();
+  const drop = document.getElementById('ac-dropdown');
+  acIdx = -1;
+
+  if(val.length === 0){
+    acFiltrados = LISTA_PRODUTOS.slice(0, 80);
+  } else {
+    acFiltrados = LISTA_PRODUTOS.filter(p=>p.toLowerCase().startsWith(val)).slice(0, 60);
+  }
+
+  if(acFiltrados.length === 0){ drop.classList.remove('open'); return; }
+
+  const esc = val.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re  = val ? new RegExp(`(${esc})`,'gi') : null;
+
+  drop.innerHTML = acFiltrados.map((p,i)=>`
+    <div class="ac-item" data-i="${i}" onmousedown="acEscolher('${p.replace(/'/g,"\\'")}')">
+      ${re ? p.replace(re,'<mark>$1</mark>') : p}
+    </div>
+  `).join('') +
+  `<div class="ac-count">${acFiltrados.length} produto${acFiltrados.length>1?'s':''} — ou continue digitando livremente</div>`;
+
+  drop.classList.add('open');
+}
+
+function acEscolher(nome){
+  document.getElementById('ent-nome').value = nome;
+  document.getElementById('ac-dropdown').classList.remove('open');
+  acIdx = -1;
+  document.getElementById('ent-qtd').focus();
+}
+
+function acTecla(e){
+  const drop = document.getElementById('ac-dropdown');
+  const items = drop.querySelectorAll('.ac-item');
+  if(!drop.classList.contains('open')){ if(e.key==='Enter') document.getElementById('ent-qtd').focus(); return; }
+  if(e.key==='ArrowDown'){
+    e.preventDefault();
+    acIdx = Math.min(acIdx+1, items.length-1);
+    items.forEach((el,i)=>el.classList.toggle('selected',i===acIdx));
+    if(items[acIdx]) items[acIdx].scrollIntoView({block:'nearest'});
+  } else if(e.key==='ArrowUp'){
+    e.preventDefault();
+    acIdx = Math.max(acIdx-1, -1);
+    items.forEach((el,i)=>el.classList.toggle('selected',i===acIdx));
+  } else if(e.key==='Enter'){
+    if(acIdx>=0 && acFiltrados[acIdx]){ e.preventDefault(); acEscolher(acFiltrados[acIdx]); }
+    else { drop.classList.remove('open'); document.getElementById('ent-qtd').focus(); }
+  } else if(e.key==='Escape'){
+    drop.classList.remove('open'); acIdx=-1;
+  }
+}
+
+document.addEventListener('click',function(e){
+  if(!e.target.closest('.ac-wrap')) document.getElementById('ac-dropdown').classList.remove('open');
+});
+
+// ─── MÁSCARA MONETÁRIA ───
+function mascaraMoeda(input){
+  // Pega só os dígitos digitados
+  let digits = input.value.replace(/\D/g,'');
+  // Remove zeros à esquerda em excesso
+  digits = digits.replace(/^0+/, '') || '0';
+  // Garante ao menos 3 dígitos para ter centavos (ex: "5" → "005")
+  while(digits.length < 3) digits = '0' + digits;
+  // Separa centavos (últimos 2) do resto
+  const centavos = digits.slice(-2);
+  let inteiros   = digits.slice(0, -2).replace(/^0+/, '') || '0';
+  // Formata milhar com ponto
+  inteiros = inteiros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  input.value = inteiros + ',' + centavos;
+}
+
+function parseMoeda(val){
+  // Converte "1.210,32" → 1210.32
+  if(!val) return 0;
+  return parseFloat(val.replace(/\./g,'').replace(',','.')) || 0;
+}
+
+// ─── INIT ───
+// ─── ESTATÍSTICAS ───
+function renderStats(){
+  // ── Agregações ──────────────────────────────────────────
+  const mapaProd    = {}; // produto → {qtd, total}
+  const mapaDia     = {}; // data   → {vendas, qtd, total}
+  const mapaCliente = {}; // cliente→ {compras, qtd, total}
+
+  vendas.forEach(v=>{
+    // Por dia
+    if(!mapaDia[v.data]) mapaDia[v.data] = {vendas:0, qtd:0, total:0};
+    mapaDia[v.data].vendas++;
+    mapaDia[v.data].total += v.total;
+
+    // Por cliente
+    const cl = v.cliente || 'Cliente';
+    if(!mapaCliente[cl]) mapaCliente[cl] = {compras:0, qtd:0, total:0};
+    mapaCliente[cl].compras++;
+    mapaCliente[cl].total += v.total;
+
+    // Por produto
+    v.itens.forEach(item=>{
+      if(!mapaProd[item.nome]) mapaProd[item.nome] = {qtd:0, total:0};
+      mapaProd[item.nome].qtd   += item.qtd;
+      mapaProd[item.nome].total += item.qtd * item.precoUnit;
+      mapaDia[v.data].qtd       += item.qtd;
+      mapaCliente[cl].qtd       += item.qtd;
+    });
+  });
+
+  const ranking  = Object.entries(mapaProd)
+    .map(([nome,d])=>({nome,...d}))
+    .sort((a,b)=>b.qtd - a.qtd);
+
+  const diasList = Object.entries(mapaDia)
+    .map(([data,d])=>({data,...d}))
+    .sort((a,b)=>{
+      const p=s=>{ const[dd,mm,yy]=s.split('/'); return new Date(`${yy}-${mm}-${dd}`); };
+      return p(b.data)-p(a.data);
+    });
+
+  const clienteList = Object.entries(mapaCliente)
+    .map(([nome,d])=>({nome,...d}))
+    .sort((a,b)=>b.total - a.total);
+
+  const totalVendas   = vendas.length;
+  const totalItensVnd = ranking.reduce((a,r)=>a+r.qtd, 0);
+  const totalFaturado = vendas.reduce((a,v)=>a+v.total, 0);
+  const ticketMedio   = totalVendas ? totalFaturado/totalVendas : 0;
+  const totalClientes = clienteList.length;
+  const maxQtd        = ranking.length ? ranking[0].qtd : 1;
+  const totalRank     = ranking.reduce((a,r)=>a+r.total, 0);
+
+  // ── Cards ──────────────────────────────────────────────
+  document.getElementById('stats-cards').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-card-val">${totalVendas}</div>
+      <div class="stat-card-label">Vendas</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-val orange">${totalItensVnd}</div>
+      <div class="stat-card-label">Itens Vendidos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-val green" style="font-size:clamp(12px,3vw,20px)">${fmt(totalFaturado)}</div>
+      <div class="stat-card-label">Faturado</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-val" style="font-size:clamp(12px,3vw,20px)">${fmt(ticketMedio)}</div>
+      <div class="stat-card-label">Ticket Médio</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-val orange">${totalClientes}</div>
+      <div class="stat-card-label">Clientes</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-card-val green">${ranking.length}</div>
+      <div class="stat-card-label">Produtos</div>
+    </div>`;
+
+  // ── Ranking produtos ───────────────────────────────────
+  const rankEl = document.getElementById('stats-ranking');
+  document.getElementById('stats-count').textContent = ranking.length + ' produto'+(ranking.length!==1?'s':'');
+
+  if(!ranking.length){
+    rankEl.innerHTML = `<tr><td colspan="5"><div class="empty"><div class="empty-icon">📊</div><div class="empty-text">Nenhuma venda registrada ainda</div></div></td></tr>`;
+  } else {
+    const posIcon = i => i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}º`;
+    rankEl.innerHTML = ranking.map((r,i)=>{
+      const pct = totalRank>0 ? (r.total/totalRank*100).toFixed(1) : '0.0';
+      const barW = Math.round(r.qtd/maxQtd*100);
+      return `<tr>
+        <td style="font-size:${i<3?'18':'13'}px;text-align:center;width:36px">${posIcon(i)}</td>
+        <td>
+          <strong>${r.nome}</strong>
+          <div style="margin-top:4px;height:5px;background:var(--bg2);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${barW}%;background:var(--accent);border-radius:3px"></div>
+          </div>
+        </td>
+        <td class="mono" style="text-align:center">${r.qtd} un.</td>
+        <td class="mono">${fmt(r.total)}</td>
+        <td class="mono" style="color:var(--ink3)">${pct}%</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Por dia ────────────────────────────────────────────
+  const diasEl = document.getElementById('stats-dias');
+  document.getElementById('stats-dias-count').textContent = diasList.length + ' dia'+(diasList.length!==1?'s':'');
+
+  if(!diasList.length){
+    diasEl.innerHTML = `<tr><td colspan="4"><div class="empty" style="padding:20px"><div class="empty-text">Sem dados</div></div></td></tr>`;
+  } else {
+    diasEl.innerHTML = diasList.map(d=>`<tr>
+      <td><strong>${d.data}</strong></td>
+      <td class="mono" style="text-align:center">${d.vendas}</td>
+      <td class="mono" style="text-align:center">${d.qtd} un.</td>
+      <td class="mono">${fmt(d.total)}</td>
+    </tr>`).join('') +
+    `<tr class="total-row">
+      <td>TOTAL</td>
+      <td><span class="mono">${totalVendas} vendas</span></td>
+      <td><span class="mono">${totalItensVnd} un.</span></td>
+      <td><span class="mono">${fmt(totalFaturado)}</span></td>
+    </tr>`;
+  }
+
+  // ── Por cliente ────────────────────────────────────────
+  const clienteEl = document.getElementById('stats-clientes');
+  document.getElementById('stats-clientes-count').textContent = clienteList.length + ' cliente'+(clienteList.length!==1?'s':'');
+
+  if(!clienteList.length){
+    clienteEl.innerHTML = `<tr><td colspan="4"><div class="empty" style="padding:20px"><div class="empty-text">Sem dados</div></div></td></tr>`;
+  } else {
+    clienteEl.innerHTML = clienteList.map(c=>`<tr>
+      <td><strong>${c.nome}</strong></td>
+      <td class="mono" style="text-align:center">${c.compras}</td>
+      <td class="mono" style="text-align:center">${c.qtd} un.</td>
+      <td class="mono">${fmt(c.total)}</td>
+    </tr>`).join('');
+  }
+}
+
+function renderAll(){ renderEntrada(); renderEstoque(); renderCaixa(); renderRelatorio(); renderStats(); }
+renderAll();
+</script>
+</body>
+</html>
